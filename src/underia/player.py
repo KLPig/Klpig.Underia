@@ -92,7 +92,7 @@ class Player:
         return regen
 
     def calculate_damage(self):
-        ACCESSORY_DAMAGE = {'dangerous_necklace': 0.12, 'green_ring': -0.4}
+        ACCESSORY_DAMAGE = {'dangerous_necklace': 0.12, 'winds_necklace': -0.35}
         dmg = 1.0
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_DAMAGE.keys():
@@ -100,7 +100,7 @@ class Player:
         return dmg
 
     def calculate_speed(self):
-        ACCESSORY_SPEED = {'orange_ring': 0.32, 'green_ring': -0.4, 'quiver': 0.15, 'firite_cloak': .45}
+        ACCESSORY_SPEED = {'orange_ring': 0.32, 'green_ring': -0.4, 'quiver': 0.15, 'firite_cloak': .45, 'winds_necklace': .5}
         if self.hp_sys.hp < self.hp_sys.max_hp * 0.6:
             ACCESSORY_SPEED['terrified_necklace'] = 0.4
         spd = 1.0
@@ -118,7 +118,7 @@ class Player:
         return dmg
 
     def calculate_ranged_damage(self):
-        ACCESSORY_DAMAGE = {'quiver': .10, 'firite_cloak': .32}
+        ACCESSORY_DAMAGE = {'quiver': .10, 'firite_cloak': .32, 'winds_necklace': .2}
         dmg = 1.0
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_DAMAGE.keys():
@@ -139,7 +139,7 @@ class Player:
         else:
             b = 0
         if self.weapons[self.sel_weapon] is weapons.WEAPONS['nights_edge']:
-            b = max(0, b - 3)
+            b = max(0, b - 4)
         return b
 
     def get_night_vision(self):
@@ -239,6 +239,9 @@ class Player:
                         item = inventory.ITEMS[item]
                         styles.item_mouse(10 + i * 80, game.get_game().displayer.SCREEN_HEIGHT - 180 - j * 80, item.id, str(i + j * l + 1), str(amount), 1)
                         rect = pg.Rect(10 + i * 80, game.get_game().displayer.SCREEN_HEIGHT - 180 - j * 80, 80, 80)
+                        if rect.collidepoint(pg.mouse.get_pos()):
+                            if pg.K_q in game.get_game().get_keys():
+                                del self.inventory.items[item.id]
                         if rect.collidepoint(pg.mouse.get_pos()) and 1 in game.get_game().get_mouse_press():
                             if inventory.TAGS['accessory'] in item.tags:
                                 self.inventory.remove_item(item)
@@ -253,7 +256,7 @@ class Player:
                             elif inventory.TAGS['healing_potion'] in item.tags:
                                 if not len([1 for eff in self.hp_sys.effects if eff.NAME == 'Potion Sickness']):
                                     self.inventory.remove_item(item)
-                                    self.hp_sys.heal({'weak_healing_potion': 50}[item.id])
+                                    self.hp_sys.heal({'weak_healing_potion': 50, 'crabapple': 120}[item.id])
                                     self.hp_sys.effect(effects.PotionSickness(60, 1))
                             elif inventory.TAGS['magic_potion'] in item.tags:
                                 if not len([1 for eff in self.hp_sys.effects if eff.NAME == 'Mana Sickness']):
@@ -263,6 +266,10 @@ class Player:
                             elif item.id == 'mana_crystal':
                                 if self.max_mana < 120:
                                     self.max_mana += 15
+                                    self.inventory.remove_item(item)
+                            elif item.id == 'firy_plant':
+                                if self.hp_sys.max_hp < 500:
+                                    self.hp_sys.max_hp += 20
                                     self.inventory.remove_item(item)
                             elif inventory.TAGS['ammo_arrow'] in item.tags:
                                 self.ammo = (item.id, self.inventory.items[item.id])
@@ -276,6 +283,8 @@ class Player:
                                 entity.entity_spawn(entity.Entities.TrueEye, 2000, 2000, 0, 1145, 100000)
                             elif item.id == 'fire_slime':
                                 entity.entity_spawn(entity.Entities.MagmaKing, 2000, 2000, 0, 1145, 100000)
+                            elif item.id == 'wind':
+                                entity.spawn_sandstorm()
             self.recipes = [r for r in inventory.RECIPES if r.is_valid(self.inventory)]
             if len(self.recipes):
                 self.sel_recipe %= len(self.recipes)
@@ -312,10 +321,14 @@ class Player:
                 styles.item_display(10, 170, ammo, '', str(amount), 2)
                 styles.item_mouse(10, 170, ammo, '', str(amount), 2)
         else:
+            t = (game.get_game().day_time % 1 * 24 * 60)
+            f = displayer.font.render(f"{int(t // 60)}:{'0' if int(t % 60) < 10 else ''}{int(t % 60)}", (255, 255, 255), (0, 0, 0))
+            fr = f.get_rect(bottomleft=(10, displayer.SCREEN_HEIGHT - 10))
+            displayer.canvas.blit(f, fr)
             pg.draw.rect(displayer.canvas, (0, 0, 0), (displayer.SCREEN_WIDTH - 200, displayer.SCREEN_HEIGHT - 110, 100, 100))
             x, y = game.get_game().chunk_pos
-            for i in range(x - 10, x + 11):
-                for j in range(y - 10, y + 11):
+            for i in range(x - 10, x + 10):
+                for j in range(y - 10, y + 10):
                     if i < 0 or i >= game.get_game().map.shape[0] or j < 0 or j >= game.get_game().map.shape[1]:
                         continue
                     color = game.get_game().map[i, j]
@@ -327,12 +340,12 @@ class Player:
                 dis = vector.distance(px, py)
                 pg.draw.circle(displayer.canvas, (255, 0, 0), position.displayed_position((px * 300 // dis + self.obj.pos[0], py * 300 // dis + self.obj.pos[1])), max(30, int(300 - dis // 30)) // 15)
         if pg.K_h in game.get_game().get_keys():
-            potions = [inventory.ITEMS['weak_healing_potion']]
+            potions = [inventory.ITEMS['crabapple'], inventory.ITEMS['weak_healing_potion']]
             for p in potions:
                 if p.id in self.inventory.items:
                     if not len([1 for eff in self.hp_sys.effects if eff.NAME == 'Potion Sickness']):
                         self.inventory.remove_item(p)
-                        self.hp_sys.heal({'weak_healing_potion': 50}[p.id])
+                        self.hp_sys.heal({'weak_healing_potion': 50, 'crabapple': 120}[p.id])
                         self.hp_sys.effect(effects.PotionSickness(60, 1))
                         break
         if pg.K_m in game.get_game().get_keys():

@@ -10,7 +10,7 @@ import pickle
 class Game:
     ITEM_SPLIT_MIN = 1
     ITEM_SPLIT_MAX = 2
-    TIME_SPEED = .00003
+    TIME_SPEED = .00008 * 5
     CHUNK_SIZE = 100
 
     def __init__(self):

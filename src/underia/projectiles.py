@@ -219,6 +219,10 @@ class Projectiles:
                 self.dead = True
             super().update()
 
+    class RockWand(PlatinumWand):
+        DAMAGE_AS = 'rock_wand'
+        IMG = 'projectiles_rock_wand'
+
     class NightsEdge(PlatinumWand):
         DAMAGE_AS = 'nights_edge'
         IMG = 'projectiles_nights_edge'
@@ -250,6 +254,7 @@ class Projectiles:
             self.set_rotation(rotation)
             self.dead = False
             self.tick = 0
+            self.obj.rotation = self.rot
 
         def update(self):
             ox, oy = self.obj.pos
@@ -304,6 +309,11 @@ class Projectiles:
         SPEED = 120
         IMG = 'plasma'
 
+    class RockBullet(Bullet):
+        DAMAGES = 60
+        SPEED = 20
+        IMG = 'rock_bullet'
+
 
 AMMOS = {
     'arrow': Projectiles.Arrow,
@@ -312,4 +322,5 @@ AMMOS = {
     'bullet': Projectiles.Bullet,
     'platinum_bullet': Projectiles.PlatinumBullet,
     'plasma': Projectiles.Plasma,
+    'rock_bullet': Projectiles.RockBullet,
 }

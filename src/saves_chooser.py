@@ -7,7 +7,7 @@ n = 1
 selects = []
 
 for i in range(1, 10):
-    if os.path.exists(f".save{i}.pkl"):
+    if os.path.exists(path.get_save_path(f".save{i}.pkl")):
         selects.append(f"Save {i}")
     else:
         selects.append(f"Save {i} (empty)")
@@ -40,8 +40,8 @@ def choose_save():
                 elif event.key == pg.K_RETURN:
                     return cmds, f".save{n + 1}.pkl"
                 elif event.key == pg.K_BACKSPACE:
-                    if os.path.exists(f".save{n + 1}.pkl"):
-                        os.remove(f".save{n}.pkl")
+                    if os.path.exists(path.get_save_path(f".save{n + 1}.pkl")):
+                        os.remove(path.get_save_path(f".save{n}.pkl"))
                         selects[n] = f"Save {n + 1} (empty)"
         screen.fill((0, 0, 0))
         for i, select in enumerate(selects):

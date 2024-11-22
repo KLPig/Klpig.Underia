@@ -89,6 +89,7 @@ class SweepWeapon(Weapon):
         self.rotate(self.rot_speed)
         super().on_attack()
         self.damage()
+        self.rotate(int(-(self.timer - self.at_time / 2)))
 
     def on_end_attack(self):
         super().on_end_attack()
@@ -120,6 +121,15 @@ class BloodySword(SweepWeapon):
             px, py = game.get_game().player.obj.pos
             game.get_game().player.obj.apply_force(vector.Vector(vector.coordinate_rotation(mx - px, my - py), 600))
 
+class SandSword(SweepWeapon):
+    def on_attack(self):
+        super().on_attack()
+        if pg.K_q in game.get_game().get_keys():
+            mx, my = position.real_position(pg.mouse.get_pos())
+            px, py = game.get_game().player.obj.pos
+            game.get_game().player.obj.apply_force(vector.Vector(vector.coordinate_rotation(mx - px, my - py), 900))
+
+
 class Blade(AutoSweepWeapon):
     def on_start_attack(self):
         r = -1
@@ -147,10 +157,25 @@ class Volcano(Blade):
 class NightsEdge(Blade):
     def on_start_attack(self):
         super().on_start_attack()
-        n = projectiles.Projectiles.NightsEdge((self.x + game.get_game().player.obj.pos[0], self.y + game.get_game().player.obj.pos[1]), self.rot + 200)
-        n.obj.apply_force(vector.Vector(self.rot + 200, 1200))
+        if game.get_game().day_time > 0.75 or game.get_game().day_time < 0.2:
+            self.at_time = 10
+            self.rot_speed = 36
+            spd = 1600
+            self.damages = {dmg.DamageTypes.PHYSICAL: 380, dmg.DamageTypes.MAGICAL: 140}
+            self.img_index = "items_weapons_nights_edge_night"
+        else:
+            self.at_time = 18
+            self.rot_speed = 40
+            spd = 1
+            self.damages = {dmg.DamageTypes.PHYSICAL: 200, dmg.DamageTypes.MAGICAL: 60}
+            self.img_index = 'items_weapons_nights_edge'
+        n = projectiles.Projectiles.NightsEdge((self.x + game.get_game().player.obj.pos[0], self.y + game.get_game().player.obj.pos[1]), self.rot + 100)
+        n.obj.apply_force(vector.Vector(self.rot + 100, spd))
         game.get_game().projectiles.append(n)
-        game.get_game().day_time = 0
+
+    def on_attack(self):
+        self.rotate(int(-(self.timer - self.at_time / 2) * -5))
+        super().on_attack()
 
 class MagicSword(AutoSweepWeapon):
     def on_end_attack(self):
@@ -174,14 +199,15 @@ class MagicWeapon(Weapon):
 
 class Hematology(MagicWeapon):
     def __init__(self, name, img: pg.Surface, speed: int, at_time: int, auto_fire: bool = False):
-        super().__init__(name, {}, 0, img, speed, at_time, projectiles.Projectiles.Projectile, 20, auto_fire)
+        super().__init__(name, {}, 0, img, speed, at_time, projectiles.Projectiles.Projectile, 30, auto_fire)
 
     def on_start_attack(self):
         if game.get_game().player.mana < self.mana_cost:
             self.timer = 0
             return
+        game.get_game().player.mana -= self.mana_cost
         self.face_to(*position.relative_position(position.real_position(pg.mouse.get_pos())))
-        game.get_game().player.hp_sys.heal(10)
+        game.get_game().player.hp_sys.heal(30)
 
 class Bow(Weapon):
     def __init__(self, name, damages: dict[int, float], kb: float, img: pg.Surface, speed: int, at_time: int, projectile_speed: int, auto_fire: bool = False):
@@ -259,8 +285,11 @@ def set_weapons():
                                                        10, 20, 100, auto_fire=True),
         'volcano': Volcano('volcano', {dmg.DamageTypes.PHYSICAL: 120}, 0.5, 'items_weapons_volcano',
                             2, 18, 20, 200),
+        'sand_sword': SandSword('sand_sword', {dmg.DamageTypes.PHYSICAL: 148}, 0.3,
+                                'items_weapons_sand_sword', 0,
+                                8, 30, 120, auto_fire=True),
         'nights_edge': NightsEdge('nights edge', {dmg.DamageTypes.PHYSICAL: 380, dmg.DamageTypes.MAGICAL: 140}, 0.6, 'items_weapons_nights_edge',
-                                    1, 10, 36, 200),
+                                    1, 18, 20, 100),
 
         'bow': Bow('bow', {dmg.DamageTypes.PIERCING: 6}, 0.1, 'items_weapons_bow',
                    3, 8, 10),
@@ -274,6 +303,8 @@ def set_weapons():
                             2, 6, 50, auto_fire=True),
         'bloody_bow': Bow('bloody bow', {dmg.DamageTypes.PIERCING: 80}, 0.5, 'items_weapons_bloody_bow',
                           5, 15, 120, auto_fire=True),
+        'recurve_bow': Bow('recurve bow', {dmg.DamageTypes.PIERCING: 140}, 0.6, 'items_weapons_recurve_bow',
+                           8, 2, 200, auto_fire=True),
 
         'pistol': Gun('pistol', {dmg.DamageTypes.PIERCING: 28}, 0.1, 'items_weapons_pistol',
                       3, 15, 15),
@@ -302,10 +333,13 @@ def set_weapons():
         'talent_book': MagicWeapon('talent book', {dmg.DamageTypes.MAGICAL: 24}, 0.7,
                                                        'items_weapons_talent_book', 0,
                                                        2, projectiles.Projectiles.TalentBook, 2, True),
-        'hematology': Hematology('hematology', 'items_weapons_hematology', 3, 12, True),
+        'hematology': Hematology('hematology', 'items_weapons_hematology', 2, 3, True),
         'blood_wand': MagicWeapon('blood wand', {dmg.DamageTypes.MAGICAL: 75}, 0.1,
                                                        'items_weapons_blood_wand', 4,
                                                        12, projectiles.Projectiles.BloodWand, 8, True),
+        'rock_wand': MagicWeapon('rock wand', {dmg.DamageTypes.MAGICAL: 65}, 0.6,
+                                                      'items_weapons_rock_wand', 0,
+                                                      4, projectiles.Projectiles.RockWand, 3, True)
     }
 
 set_weapons()

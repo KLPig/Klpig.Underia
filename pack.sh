@@ -1,0 +1,1 @@
+pyinstaller -D -p . -i icon.icns --specpath app/ -n Underia --workpath app/build/ --distpath app/dist/ --clean --add-data "../src/assets:assets" --windowed src/test.py

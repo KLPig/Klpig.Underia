@@ -1,7 +1,7 @@
 import pygame as pg
 import copy
 from src.visual import effects
-from src.underia import game
+from src.underia import game, weapons
 from src.resources import position
 from src import pygame_lights
 
@@ -44,7 +44,8 @@ class Displayer:
             px, py = position.displayed_position(game.get_game().player.obj.pos)
             if lv:
                 filter.blit(pygame_lights.global_light(filter.get_size(), 50 + game.get_game().player.get_night_vision()), (0, 0))
-                light = pygame_lights.LIGHT(lv * 150, pygame_lights.pixel_shader(lv * 150, (255, 127, 0), 1, False))
+                player = game.get_game().player
+                light = pygame_lights.LIGHT(lv * 150, pygame_lights.pixel_shader(lv * 150, (255, 127, 0) if player.weapons[player.sel_weapon] is not weapons.WEAPONS['nights_edge'] else (127, 0, 127), 1, False))
                 light.main([], filter, px, py)
         self.canvas.blit(filter, (0, 0), special_flags=pg.BLEND_RGBA_MULT)
         pg.display.update()

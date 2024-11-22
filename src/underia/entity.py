@@ -53,10 +53,7 @@ class MonsterAI(mover.Mover):
         self.touched_player = False
 
     def on_update(self):
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 40))
+        pass
 
 class TreeMonsterAI(MonsterAI):
     MASS = 200
@@ -90,7 +87,6 @@ class EyeAI(MonsterAI):
         py = player.obj.pos[1] - self.pos[1]
         if self.touched_player:
             self.timer = -100
-            print(1)
         if self.timer < 110:
             self.apply_force(vector.Vector(vector.coordinate_rotation(px, py) + 180, 12))
         elif self.timer < 190:
@@ -122,6 +118,11 @@ class SlowMoverAI(MonsterAI):
 
 class MagmaCubeAI(SlowMoverAI):
     TOUCHING_DAMAGE = 32
+
+class RuneRockAI(SlowMoverAI):
+    MASS = 240
+    FRICTION = 0.9
+    TOUCHING_DAMAGE = 56
 
 class BuildingAI(MonsterAI):
     MASS = 2000
@@ -197,6 +198,25 @@ class MagmaKingAI(MonsterAI):
             self.timer = 0
         self.timer += 1
 
+class SandStormAI(MonsterAI):
+    FRICTION = 1
+    MASS = 50
+    TOUCHING_DAMAGE = 180
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.rot = 0
+        self.d = 300
+        self.tick = 0
+
+    def on_update(self):
+        self.rot = (self.rot + .5) % 360
+        self.tick += 1
+        self.d = 300 + abs(self.tick % 200 - 100) * 6
+        self.pos = game.get_game().player.obj.pos
+        ax, ay = vector.rotation_coordinate(self.rot)
+        self.pos = (self.pos[0] + ax * self.d, self.pos[1] + ay * self.d)
+
 class MagmaKingFireballAI(MonsterAI):
     FRICTION = 1
     MASS = 50
@@ -228,9 +248,12 @@ class Entities:
         ENTITY_TAGS = []
         IS_MENACE = False
 
-        def __init__(self, pos, img = None, ai: type(MonsterAI) = MonsterAI, hp = 120):
-            self.obj = ai(pos)
-            self.hp_sys = hp_system.HPSystem(hp)
+        def __init__(self, pos, img = None, ai: type(MonsterAI) = MonsterAI, hp = 120, hp_sys: hp_system.HPSystem | None = None):
+            self.obj: mover.Mover = ai(pos)
+            if hp_sys is None:
+                self.hp_sys = hp_system.HPSystem(hp)
+            else:
+                self.hp_sys = hp_sys
             self.img: pg.Surface | None = img
             self.d_img = self.img
             self.rot = 0
@@ -266,6 +289,36 @@ class Entities:
                 if r.collidepoint(pg.mouse.get_pos()):
                     f = displayer.font.render(f'{self.NAME}({int(self.hp_sys.hp)}/{self.hp_sys.max_hp})', True, (255, 255, 255), (0, 0, 0))
                     displayer.canvas.blit(f, pg.mouse.get_pos())
+
+    class WormEntity:
+        NAME = 'Entity'
+        DISPLAY_MODE = 0
+        LOOT_TABLE = LootTable([])
+        ENTITY_TAGS = []
+        IS_MENACE = False
+
+        def __init__(self, pos, length, img_head = None, img_body = None, head_ai: type(MonsterAI) = MonsterAI, hp = 120):
+            self.length = length
+            self.hp_sys = hp_system.HPSystem(hp)
+            self.body = [Entities.Entity(pos, img_head, head_ai, hp_sys=self.hp_sys)] + [Entities.Entity((pos[0] + i + 1, pos[1]), img_body, MonsterAI, hp_sys=self.hp_sys) for i in range(length - 1)]
+
+        def update(self):
+            self.body[0].update()
+            for i in range(1, self.length):
+                rot = (self.body[i].rot + self.body[i - 1].rot * 19) // 20
+                self.body[i].obj.pos = self.body[i - 1].obj.pos
+                self.body[i].rot = rot
+                ax, ay = vector.rotation_coordinate(180 + rot)
+                self.body[i].obj.pos = (self.body[i].obj.pos[0] + ax * 60, self.body[i].obj.pos[1] + ay * 60)
+                self.body[i].update()
+
+        def set_rotation(self, rot):
+            self.body[0].set_rotation(rot)
+
+        def rotate(self, rot):
+            self.body[0].set_rotation(rot)
+
+
 
     class Test(Entity):
         NAME = 'Test'
@@ -425,10 +478,21 @@ class Entities:
 
         def update(self):
             self.set_rotation(self.rot)
-            self.hp_sys.hp -= 5
+            self.hp_sys.hp -= 20
             super().update()
+            self.damage()
+
+        def damage(self):
             if vector.distance(self.obj.pos[0] - game.get_game().player.obj.pos[0], self.obj.pos[1] - game.get_game().player.obj.pos[1]) < 36:
                 game.get_game().player.hp_sys.damage(40, damages.DamageTypes.MAGICAL)
+                game.get_game().player.hp_sys.enable_immume()
+                self.hp_sys.hp = 0
+
+    class SandStormAttack(MagmaKingFireball):
+
+        def damage(self):
+            if vector.distance(self.obj.pos[0] - game.get_game().player.obj.pos[0], self.obj.pos[1] - game.get_game().player.obj.pos[1]) < 36:
+                game.get_game().player.hp_sys.damage(72, damages.DamageTypes.MAGICAL)
                 game.get_game().player.hp_sys.enable_immume()
                 self.hp_sys.hp = 0
 
@@ -437,8 +501,9 @@ class Entities:
         DISPLAY_MODE = 3
         IS_MENACE = True
         LOOT_TABLE = LootTable([
-            IndividualLoot('blood_ingot', 0.6, 5, 10),
-            IndividualLoot('firite_ingot', 0.9, 30, 40),
+            IndividualLoot('blood_ingot', 0.8, 5, 10),
+            IndividualLoot('firite_ingot', 1, 30, 40),
+            IndividualLoot('firy_plant', 1, 10, 20),
         ])
 
         def __init__(self, pos):
@@ -458,6 +523,45 @@ class Entities:
                     fb = Entities.MagmaKingFireball(self.obj.pos, k + vector.coordinate_rotation(player.obj.pos[0] - self.obj.pos[0], player.obj.pos[1] - self.obj.pos[1]))
                     fb.obj.apply_force(vector.Vector(self.obj.velocity.get_net_rotation(), self.obj.velocity.get_net_value() // 50))
                     game.get_game().entities.append(fb)
+
+    class SandStorm(Entity):
+        NAME = 'Sandstorm'
+        DISPLAY_MODE = 3
+        IS_MENACE = True
+        LOOT_TABLE = LootTable([
+            IndividualLoot('mysterious_ingot', 1, 15, 35),
+            IndividualLoot('storm_core',  1, 2, 4),
+            ])
+
+        def __init__(self, pos, hp_sys, rot):
+            super().__init__(pos, game.get_game().graphics['entity_sandstorm'], SandStormAI, hp_sys=hp_sys)
+            self.obj.rot = rot
+            self.tick = 0
+
+        def update(self):
+            super().update()
+            self.tick += 1
+            if self.tick % 6 == 1:
+                px, py = game.get_game().player.obj.pos
+                rot = vector.coordinate_rotation(px - self.obj.pos[0], py - self.obj.pos[1])
+                self.set_rotation(rot)
+                game.get_game().entities.append(Entities.SandStormAttack(self.obj.pos, self.rot))
+
+
+    class RuneRock(Entity):
+        NAME = 'Rune Rock'
+        DISPLAY_MODE = 3
+        LOOT_TABLE = LootTable([
+            IndividualLoot('magic_stone', 0.3, 20, 30),
+            IndividualLoot('mysterious_substance', 0.8, 10, 12),
+        ])
+
+        def is_suitable(self, biome: str):
+            return biome in ['desert']
+
+        def __init__(self, pos):
+            super().__init__(pos, game.get_game().graphics['entity_rune_rock'], RuneRockAI, 1550)
+            self.hp_sys.defenses[damages.DamageTypes.MAGICAL] = 32
 
     class SwordInTheStone(Entity):
         NAME = 'Sword in the Stone'
@@ -481,3 +585,10 @@ def entity_spawn(entity: type(Entities.Entity), to_player_min = 1500, to_player_
     r = random.random() * 2 * math.pi
     px, py = player.obj.pos[0] + dist * math.cos(r), player.obj.pos[1] + dist * math.sin(r)
     game_obj.entities.append(entity((px, py)))
+
+def spawn_sandstorm():
+    hp_sys = hp_system.HPSystem(12200)
+    for i in range(4):
+        e = Entities.SandStorm((0, 0), hp_sys, i * 90)
+        e.IS_MENACE = i == 1
+        game.get_game().entities.append(e)

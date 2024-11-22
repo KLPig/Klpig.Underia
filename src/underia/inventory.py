@@ -139,6 +139,9 @@ ITEMS = {
     'magic_stone': Inventory.Item('Magic Stone', '', 'magic_stone', 1, [TAGS['item']]),
     'blood_ingot': Inventory.Item('Blood Ingot', '', 'blood_ingot', 2, [TAGS['item']]),
     'firite_ingot': Inventory.Item('Firite Ingot', '', 'firite_ingot', 2, [TAGS['item']]),
+    'mysterious_substance': Inventory.Item('Mysterious Substance', '','mysterious_substance', 2, [TAGS['item']]),
+    'mysterious_ingot': Inventory.Item('Mysterious Ingot', '','mysterious_ingot', 2, [TAGS['item']]),
+    'storm_core': Inventory.Item('Storm Core', '', 'storm_core', 2, [TAGS['item']]),
 
     'torch': Inventory.Item('Torch', 'Ignite the darkness.', 'torch', 0, [TAGS['item'], TAGS['accessory'], TAGS['light_source']]),
     'night_visioner': Inventory.Item('Night Visioner', 'See in the dark.', 'night_visioner', 0, [TAGS['item'], TAGS['accessory'], TAGS['light_source'], TAGS['night_vision']]),
@@ -158,8 +161,9 @@ ITEMS = {
     'magic_blade': Inventory.Item('Magic Blade', '','magic_blade', 2, [TAGS['item'], TAGS['weapon']]),
     'bloody_sword': Inventory.Item('Bloody Sword', 'When sweeping, press Q to sprint.', 'bloody_sword', 2, [TAGS['item'], TAGS['weapon']]),
     'volcano': Inventory.Item('Volcano', 'Gives target to fire.', 'volcano', 2, [TAGS['item'], TAGS['weapon']]),
+    'sand_sword': Inventory.Item('Sand Sword', 'When sweeping, press Q to sprint.', 'sand_sword', 2, [TAGS['item'], TAGS['weapon']]),
 
-    'nights_edge': Inventory.Item('Nights Edge', 'Night....', 'nights_edge', 4, [TAGS['item'], TAGS['weapon']]),
+    'nights_edge': Inventory.Item('Nights Edge', 'The sunset has gone, it now night...', 'nights_edge', 4, [TAGS['item'], TAGS['weapon']]),
 
     'bow': Inventory.Item('Bow', '', 'bow', 0, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
     'copper_bow': Inventory.Item('Copper Bow', '', 'copper_bow', 0, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
@@ -167,6 +171,7 @@ ITEMS = {
     'steel_bow': Inventory.Item('Steel Bow', '', 'steel_bow', 0, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
     'platinum_bow': Inventory.Item('Platinum Bow', '', 'platinum_bow', 1, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
     'bloody_bow': Inventory.Item('Bloody Bow', '', 'bloody_bow', 2, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
+    'recurve_bow': Inventory.Item('Recurve Bow', '', 'recurve_bow', 3, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
 
     'pistol': Inventory.Item('pistol', '', 'pistol', 0, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
     'rifle': Inventory.Item('rifle', '', 'rifle', 0, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
@@ -179,6 +184,7 @@ ITEMS = {
     'bullet': Inventory.Item('Bullet', '', 'bullet', 0, [TAGS['item'], TAGS['ammo'], TAGS['ammo_bullet']]),
     'platinum_bullet': Inventory.Item('Platinum Bullet', '', 'platinum_bullet', 1, [TAGS['item'], TAGS['ammo'], TAGS['ammo_bullet']]),
     'plasma': Inventory.Item('Plasma', '', 'plasma', 2, [TAGS['item'], TAGS['ammo'], TAGS['ammo_bullet']]),
+    'rock_bullet': Inventory.Item('Rock Bullet', '', 'rock_bullet', 2, [TAGS['item'], TAGS['ammo'], TAGS['ammo_bullet']]),
 
     'glowing_splint': Inventory.Item('Glowing Splint', 'Shoots glows.', 'glowing_splint', 0, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
     'copper_wand': Inventory.Item('Copper Wand', '', 'copper_wand', 0, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
@@ -187,7 +193,8 @@ ITEMS = {
     'burning_book': Inventory.Item('Burning Book', 'Burns enemies.', 'burning_book', 2, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
     'talent_book': Inventory.Item('Talent Book', '', 'talent_book', 2, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
     'blood_wand': Inventory.Item('Blood Wand', '', 'blood_wand', 2, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
-    'hematology': Inventory.Item('Hematology', 'Recovers 30 HP.', 'hematology', 2, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
+    'hematology': Inventory.Item('Hematology', 'Recovers 30 HP.', 'hematology', 3, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
+    'rock_wand': Inventory.Item('Rock Wand', '', 'rock_wand', 3, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
 
     'shield': Inventory.Item('Simple Shield', '+7 touching defense\n+12 physic defense', 'shield', 1, [TAGS['item'], TAGS['accessory']]),
     'soul_bottle': Inventory.Item('Soul Bottle', '+0.5/sec regeneration','soul_bottle', 1, [TAGS['item'], TAGS['accessory']]),
@@ -203,14 +210,18 @@ ITEMS = {
     'green_ring': Inventory.Item('Green Ring', 'Mercy.\n+18 touching defense\n-40% speed', 'green_ring', 3, [TAGS['item'], TAGS['accessory']]),
     'blue_ring': Inventory.Item('Blue Ring', 'Never lies.\n+8/sec mana regeneration\n+5 magic defense\n-1/sec regeneration', 'blue_ring', 3, [TAGS['item'], TAGS['accessory']]),
     'aimer': Inventory.Item('Aimer', 'Enables aiming to menaces.', 'aimer', 2, [TAGS['item'], TAGS['accessory'], TAGS['light_source']]),
+    'winds_necklace': Inventory.Item('Winds Necklace', '+50% speed.\n-35% damage.\n+20% ranged damage.', 'winds_necklace', 2, [TAGS['item'], TAGS['accessory']]),
 
     'weak_healing_potion': Inventory.Item('Weak Healing Potion', 'Recover 50 HP\nCausing potion sickness.', 'weak_healing_potion', 0, [TAGS['item'], TAGS['healing_potion']]),
     'weak_magic_potion': Inventory.Item('Weak Magic Potion', 'Recover 60 MP\nCausing potion sickness.', 'weak_magic_potion', 0, [TAGS['item'], TAGS['magic_potion']]),
+    'crabapple': Inventory.Item('Crabapple', 'Heals 120 HP', 'crabapple', 2, [TAGS['item'], TAGS['healing_potion']]),
 
-    'mana_crystal': Inventory.Item('Mana Crystal', '+15 maximum mana forever.', 'mana_crystal', 2, [TAGS['item']]),
+    'mana_crystal': Inventory.Item('Mana Crystal', '+15 maximum mana.', 'mana_crystal', 2, [TAGS['item']]),
+    'firy_plant': Inventory.Item('Firy Plant', '+20 maximum hp', 'firy_plant', 3, [TAGS['item']]),
 
     'suspicious_eye': Inventory.Item('Suspicious Eye', 'Summon the true eye', 'suspicious_eye', 0, [TAGS['item']]),
     'fire_slime': Inventory.Item('Fire Slime', 'Summon the magma king', 'fire_slime', 0, [TAGS['item']]),
+    'wind': Inventory.Item('Wind', 'Summon the sandstorm', 'wind', 0, [TAGS['item']])
 }
 
 class Recipe:
@@ -287,7 +298,6 @@ RECIPES = [
     Recipe({'platinum_ingot': 10, 'blood_ingot': 20, 'anvil': 1}, 'bloody_sword'),
     Recipe({'platinum_ingot': 6, 'blood_ingot': 24, 'anvil': 1}, 'bloody_bow'),
     Recipe({'platinum_ingot': 8, 'blood_ingot': 16, 'mana_crystal': 1, 'anvil': 1}, 'blood_wand'),
-    Recipe({'platinum': 24, 'blood_ingot': 16, 'magic_stone': 10, 'anvil': 1}, 'hematology'),
     Recipe({'blood_ingot': 5, 'platinum_ingot': 5, 'anvil': 1}, 'blood_arrow', 100),
     Recipe({'blood_ingot': 2, 'platinum_ingot': 1, 'anvil': 1}, 'plasma', 50),
     Recipe({'blood_ingot': 5, 'firite_ingot': 30, 'anvil': 1}, 'magma_assaulter'),
@@ -295,9 +305,19 @@ RECIPES = [
     Recipe({'firite_ingot': 64, 'platinum_ingot': 16, 'anvil': 1}, 'firite_helmet'),
     Recipe({'firite_ingot': 64, 'platinum_ingot': 16, 'anvil': 1}, 'firite_cloak'),
     Recipe({'firite_ingot': 64, 'platinum_ingot': 16, 'anvil': 1}, 'firite_pluvial'),
+    Recipe({'platinum': 24, 'blood_ingot': 16, 'magic_stone': 10, 'firy_plant': 1, 'anvil': 1}, 'hematology'),
+    Recipe({'magic_stone': 10, 'firy_plant': 1}, 'crabapple', 5),
+    Recipe({'mysterious_substance': 4, 'furnace': 1}, 'mysterious_ingot'),
+    Recipe({'platinum_ingot': 30, 'mysterious_ingot': 5, 'anvil': 1}, 'winds_necklace'),
+    Recipe({'mysterious_ingot': 12, 'anvil': 1}, 'recurve_bow'),
+    Recipe({'mysterious_ingot': 10, 'blood_ingot': 8, 'anvil': 1}, 'sand_sword'),
+    Recipe({'mysterious_ingot': 1, 'blood_ingot': 2, 'anvil': 1}, 'rock_bullet', 200),
+    Recipe({'mysterious_ingot': 11, 'blood_ingot': 20, 'mana_crystal': 2}, 'rock_wand'),
+    Recipe({'platinum_sword': 1, 'magic_sword': 1, 'bloody_sword': 1, 'volcano': 1, 'sand_sword': 1, 'storm_core': 1}, 'nights_edge'),
 
     Recipe({'cell_organization': 10}, 'suspicious_eye'),
     Recipe({'cell_organization': 5, 'firite_ingot': 1}, 'fire_slime'),
+    Recipe({'cell_organization': 5, 'mysterious_substance': 3}, 'wind'),
 
 ]
 
