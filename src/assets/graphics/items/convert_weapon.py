@@ -10,6 +10,9 @@ def convert_weapon(weapon_img):
     s.blit(im, imr)
     pg.image.save(s, 'weapons/' + weapon_img)
 
+if not os.path.exists('weapons'):
+    os.mkdir('weapons')
+
 for f in os.listdir('.'):
     if f.endswith('.png'):
         convert_weapon(f)

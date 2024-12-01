@@ -1,4 +1,5 @@
 from src.physics import vector
+import math
 
 class Mover:
     MASS = 1.0
@@ -29,7 +30,7 @@ class Mover:
     def object_collide(self, other: 'Mover'):
         if other is self:
             return
-        if (other.pos[0] - self.pos[0]) ** 2 + (other.pos[1] - self.pos[1]) ** 2 < ((self.MASS + other.MASS) / 3) ** 2:
+        if (other.pos[0] - self.pos[0]) ** 2 + (other.pos[1] - self.pos[1]) ** 2 < ((math.sqrt(self.MASS) + math.sqrt(other.MASS)) / 2 + 24) ** 2:
             r = vector.coordinate_rotation(other.pos[0] - self.pos[0], other.pos[1] - self.pos[1])
             self.force.add(vector.Vector(r + 180, self.TOUCHING_DAMAGE * (self.MASS + other.MASS) / (self.MASS + other.MASS) * 5))
             return True

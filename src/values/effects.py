@@ -44,3 +44,20 @@ class PotionSickness(Effect):
 class ManaSickness(Effect):
     IMG = 'potion_sickness'
     NAME = 'Mana Sickness'
+
+class TruthlessCurse(Aberration):
+    IMG = 'truthless_curse'
+    NAME = 'Truthless Curse'
+    CORRESPONDED_ELEMENT = elements.ElementTypes.DARK
+
+class FaithlessCurse(Effect):
+    IMG = 'faithless_curse'
+    NAME = 'Faithless Curse'
+
+class Shield(Effect):
+    IMG = 'shield'
+    NAME = 'Shield'
+
+class Gravity(Effect):
+    IMG = 'gravity'
+    NAME = 'Gravity'

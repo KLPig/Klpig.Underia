@@ -1,5 +1,4 @@
 import copy
-
 from src import resources, visual
 from src.underia import player, entity, projectiles, weapons
 import os
@@ -10,7 +9,7 @@ import pickle
 class Game:
     ITEM_SPLIT_MIN = 1
     ITEM_SPLIT_MAX = 2
-    TIME_SPEED = .00008 * 5
+    TIME_SPEED = .00008
     CHUNK_SIZE = 100
 
     def __init__(self):
@@ -30,28 +29,31 @@ class Game:
         self.map: pygame.PixelArray | None = None
         self.chunk_pos = (0, 0)
         self.last_biome = ('forest', 0)
+        self.stage = 0
 
     def get_night_color(self, time_days: float):
+        if len([1 for e in self.entities if type(e) is entity.Entities.AbyssEye]):
+            return 255, 0, 0
         if 0.2 < time_days <= 0.3:
-            r = 255
-            g = 255 - int(127 * (time_days - 0.2) / 0.1)
-            b = 255 - int(255 * (time_days - 0.2) / 0.1)
+            r = int(255 * (time_days - 0.2) / 0.1)
+            g = int(255 * (time_days - 0.2) / 0.1)
+            b = int(255 * (time_days - 0.2) / 0.1)
         elif 0.3 < time_days <= 0.7:
             r = 255
             g = 255
             b = 255
-        elif 0.7 < time_days <= 0.8:
-            r = 255 - int(255 * (time_days - 0.7) / 0.1)
-            g = 128 - int(128 * (time_days - 0.7) / 0.1)
+        elif 0.7 < time_days <= 0.75:
+            r = 255
+            g = 255 - int(128 * (time_days - 0.7) / 0.05)
+            b = 255 - int(255 * (time_days - 0.7) / 0.05)
+        elif 0.75 < time_days <= 0.8:
+            r = 255 - int(255 * (time_days - 0.75) / 0.05)
+            g = 127 - int(127 * (time_days - 0.75) / 0.05)
             b = 0
-        elif time_days > 0.8:
+        else:
             r = 0
             g = 0
             b = 0
-        else:
-            r = int(255 * time_days / 0.2)
-            g = int(255 * time_days / 0.2)
-            b = int(255 * time_days / 0.2)
 
         return r, g, b
 
@@ -76,8 +78,13 @@ class Game:
         setattr(self, 'on_update', func)
 
     def get_biome(self):
+        if len([1 for e in self.entities if type(e) is entity.Entities.AbyssEye]):
+            return 'heaven'
         x, y = self.chunk_pos
-        color = self.map[x, y] % 256 ** 3
+        try:
+            color = self.map[x, y] % 256 ** 3
+        except IndexError:
+            return 'forest'
         s = pygame.Surface((1, 1))
         if color == s.map_rgb((255, 127, 0)):
             return 'desert'
@@ -147,11 +154,8 @@ class Game:
                 loots = monster.LOOT_TABLE()
                 for item, amount in loots:
                     k = random.randint(self.ITEM_SPLIT_MIN, min(self.ITEM_SPLIT_MAX, amount))
-                    print(amount, k, end=' ')
                     for i in range(k):
                         self.drop_items.append(entity.Entities.DropItem((monster.obj.pos[0] + random.randint(-10, 10), monster.obj.pos[1] + random.randint(-10, 10)), item, amount // k + (i < amount % k)))
-                        print(amount // k + (i < amount % k), end=' ')
-                    print()
             for monster2 in self.entities:
                 monster.obj.object_collide(monster2.obj)
         for drop_item in self.drop_items:

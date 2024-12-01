@@ -39,6 +39,13 @@ class Inventory:
 
         def get_full_desc(self):
             d = self.desc
+            if TAGS['major_accessory'] in self.tags:
+                d = 'Can only be placed in the first slot.\n' + d
+            if TAGS['wings'] in self.tags:
+                d = 'Can only be placed in the second slot.\n' + d
+            if TAGS['accessory'] in self.tags:
+                d = 'Accessory\n' + d
+
             if TAGS['magic_weapon'] in self.tags:
                 weapon = weapons.WEAPONS[self.id]
                 d = f"{weapon.mana_cost} mana cost\n" + d
@@ -71,6 +78,7 @@ class Inventory:
             self.items[item.id] += number
         else:
             self.items[item.id] = number
+        self.sort()
 
     def remove_item(self, item: Item, number: int = 1):
         if item.id in self.items:
@@ -106,11 +114,16 @@ class Inventory:
     def get_item_by_rarity_color(self, rarity_color: tuple):
         return [item for item in self.items.values() if Inventory.Rarity_Colors[item.rarity] == rarity_color]
 
+    def sort(self):
+        self.items = {k: v for k, v in sorted(self.items.items(), key=lambda item: item[1], reverse=True)}
+
 TAGS = {
     'item': Inventory.Item.Tag('item', 'item'),
     'weapon': Inventory.Item.Tag('weapon', 'weapon'),
     'magic_weapon': Inventory.Item.Tag('magic_weapon','magic_weapon'),
     'accessory': Inventory.Item.Tag('accessory', 'accessory'),
+    'major_accessory': Inventory.Item.Tag('major_accessory','major_accessory'),
+    'wings': Inventory.Item.Tag('wings', 'wings'),
     'healing_potion': Inventory.Item.Tag('healing_potion', 'healing_potion'),
     'magic_potion': Inventory.Item.Tag('magic_potion','magic_potion'),
     'workstation': Inventory.Item.Tag('workstation', 'workstation'),
@@ -142,6 +155,21 @@ ITEMS = {
     'mysterious_substance': Inventory.Item('Mysterious Substance', '','mysterious_substance', 2, [TAGS['item']]),
     'mysterious_ingot': Inventory.Item('Mysterious Ingot', '','mysterious_ingot', 2, [TAGS['item']]),
     'storm_core': Inventory.Item('Storm Core', '', 'storm_core', 2, [TAGS['item']]),
+    'soul': Inventory.Item('Soul', 'Something left after death.', 'soul', 4, [TAGS['item']]),
+    'evil_ingot': Inventory.Item('Evil Ingot', 'Endless evil.', 'evil_ingot', 5, [TAGS['item']]),
+    'soul_of_flying': Inventory.Item('Soul of Flying', 'Soul of flying creatures.', 'soul_of_flying', 5, [TAGS['item']]),
+    'palladium': Inventory.Item('Palladium', '', 'palladium', 5, [TAGS['item']]),
+    'mithrill': Inventory.Item('Mithrill', '', 'mithrill', 5, [TAGS['item']]),
+    'titanium': Inventory.Item('Titanium', '', 'titanium', 5, [TAGS['item']]),
+    'palladium_ingot': Inventory.Item('Palladium Ingot', '', 'palladium_ingot', 5, [TAGS['item']]),
+    'mithrill_ingot': Inventory.Item('Mithrill Ingot', '', 'mithrill_ingot', 5, [TAGS['item']]),
+    'titanium_ingot': Inventory.Item('Titanium Ingot', '', 'titanium_ingot', 5, [TAGS['item']]),
+    'saint_steel_ingot': Inventory.Item('Saint Steel Ingot', '', 'saint_steel_ingot', 6, [TAGS['item']]),
+    'daedalus_ingot': Inventory.Item('Daedalus\' Ingot', '', 'daedalus_ingot', 6, [TAGS['item']]),
+    'dark_ingot': Inventory.Item('Dark Ingot', '', 'dark_ingot', 6, [TAGS['item']]),
+    'soul_of_integrity': Inventory.Item('Soul of Integrity', 'Power of the honest being.', 'soul_of_integrity', 6, [TAGS['item']]),
+    'soul_of_courage': Inventory.Item('Soul of Courage', 'Power of fearless.', 'soul_of_courage', 6, [TAGS['item']]),
+    'soul_of_kindness': Inventory.Item('Soul of Kindness', 'Power of mercy.', 'soul_of_kindness', 6, [TAGS['item']]),
 
     'torch': Inventory.Item('Torch', 'Ignite the darkness.', 'torch', 0, [TAGS['item'], TAGS['accessory'], TAGS['light_source']]),
     'night_visioner': Inventory.Item('Night Visioner', 'See in the dark.', 'night_visioner', 0, [TAGS['item'], TAGS['accessory'], TAGS['light_source'], TAGS['night_vision']]),
@@ -149,6 +177,7 @@ ITEMS = {
     'wooden_hammer': Inventory.Item('Wooden Hammer', '', 'wooden_hammer', 0, [TAGS['item'], TAGS['workstation']]),
     'furnace': Inventory.Item('Furnace', '', 'furnace', 0, [TAGS['item'], TAGS['workstation']]),
     'anvil': Inventory.Item('Anvil', '', 'anvil', 0, [TAGS['item'], TAGS['workstation']]),
+    'mithrill_anvil': Inventory.Item('Mithrill Anvil', '', 'anvil', 4, [TAGS['item'], TAGS['workstation']]),
 
     'wooden_sword': Inventory.Item('Wooden Sword', '', 'wooden_sword', 0, [TAGS['item'], TAGS['weapon']]),
     'copper_sword': Inventory.Item('Copper Sword', '', 'copper_sword', 0, [TAGS['item'], TAGS['weapon']]),
@@ -162,8 +191,15 @@ ITEMS = {
     'bloody_sword': Inventory.Item('Bloody Sword', 'When sweeping, press Q to sprint.', 'bloody_sword', 2, [TAGS['item'], TAGS['weapon']]),
     'volcano': Inventory.Item('Volcano', 'Gives target to fire.', 'volcano', 2, [TAGS['item'], TAGS['weapon']]),
     'sand_sword': Inventory.Item('Sand Sword', 'When sweeping, press Q to sprint.', 'sand_sword', 2, [TAGS['item'], TAGS['weapon']]),
-
-    'nights_edge': Inventory.Item('Nights Edge', 'The sunset has gone, it now night...', 'nights_edge', 4, [TAGS['item'], TAGS['weapon']]),
+    'nights_edge': Inventory.Item('Night\'s Edge', 'The sunset has gone, it now night...', 'nights_edge', 4, [TAGS['item'], TAGS['weapon']]),
+    'spiritual_stabber': Inventory.Item('Spiritual Stabber', '\n\'Destroy the mark to enhance\'', 'spiritual_stabber', 4, [TAGS['item'], TAGS['weapon']]),
+    'palladium_sword': Inventory.Item('Palladium Sword', '', 'palladium_sword', 5, [TAGS['item'], TAGS['weapon']]),
+    'mithrill_sword': Inventory.Item('Mithrill Sword', '', 'mithrill_sword', 5, [TAGS['item'], TAGS['weapon']]),
+    'titanium_sword': Inventory.Item('Titanium Sword', '', 'titanium_sword', 5, [TAGS['item'], TAGS['weapon']]),
+    'balanced_stabber': Inventory.Item('Balanced Stabber', 'The power of the evil and the hallow are balanced.\n\n\'Make it under the hallow to enhance\'', 'balanced_stabber', 5, [TAGS['item'], TAGS['weapon']]),
+    'excalibur': Inventory.Item('Excalibur', 'The legendary sword of hallow.', 'excalibur', 6, [TAGS['item'], TAGS['weapon']]),
+    'true_excalibur': Inventory.Item('True Excalibur', 'Inviolable hallow.', 'true_excalibur', 7, [TAGS['item'], TAGS['weapon']]),
+    'true_nights_edge': Inventory.Item('True Night\'s Edge', 'Inviolable dark.', 'true_nights_edge', 7, [TAGS['item'], TAGS['weapon']]),
 
     'bow': Inventory.Item('Bow', '', 'bow', 0, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
     'copper_bow': Inventory.Item('Copper Bow', '', 'copper_bow', 0, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
@@ -172,11 +208,20 @@ ITEMS = {
     'platinum_bow': Inventory.Item('Platinum Bow', '', 'platinum_bow', 1, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
     'bloody_bow': Inventory.Item('Bloody Bow', '', 'bloody_bow', 2, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
     'recurve_bow': Inventory.Item('Recurve Bow', '', 'recurve_bow', 3, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
+    'spiritual_piercer': Inventory.Item('Spiritual Piercer', '\n\'Destroy the mark to enhance\'', 'spiritual_piercer', 4, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
+    'discord_storm': Inventory.Item('Discord Storm', 'Evil corrupted, all in chaos.\n\n\'Find that old god to enhance\'', 'discord_storm', 5, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
+    'daedalus_stormbow': Inventory.Item('Daedalus\' Stormbow', '', 'daedalus_stormbow', 6, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
+    'true_daedalus_stormbow': Inventory.Item('True Daedalus\' Stormbow', '', 'true_daedalus_stormbow', 7, [TAGS['item'], TAGS['weapon'], TAGS['bow']]),
 
     'pistol': Inventory.Item('pistol', '', 'pistol', 0, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
     'rifle': Inventory.Item('rifle', '', 'rifle', 0, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
     'submachine_gun': Inventory.Item('submachine_gun', '','submachine_gun', 2, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
     'magma_assaulter': Inventory.Item('magma_assaulter', 'When shooting, press Q to sprint back.','magma_assaulter', 2, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
+    'shadow': Inventory.Item('shadow', 'When there\'s light, there\'s dark.', 'shadow', 4, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
+    'palladium_gun': Inventory.Item('Palladium Gun', '', 'palladium_gun', 5, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
+    'mithrill_gun': Inventory.Item('Mithrill Gun', '', 'mithrill_gun', 5, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
+    'titanium_gun': Inventory.Item('Titanium Gun', '', 'titanium_gun', 5, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
+    'true_shadow': Inventory.Item('True Shadow', 'Not the others, \'Pong! Nobody left.\'', 'true_shadow', 7, [TAGS['item'], TAGS['weapon'], TAGS['gun']]),
 
     'arrow': Inventory.Item('Arrow', '', 'arrow', 0, [TAGS['item'], TAGS['ammo'], TAGS['ammo_arrow']]),
     'magic_arrow': Inventory.Item('Magic Arrow', '', 'magic_arrow', 1, [TAGS['item'], TAGS['ammo'], TAGS['ammo_arrow']]),
@@ -185,6 +230,9 @@ ITEMS = {
     'platinum_bullet': Inventory.Item('Platinum Bullet', '', 'platinum_bullet', 1, [TAGS['item'], TAGS['ammo'], TAGS['ammo_bullet']]),
     'plasma': Inventory.Item('Plasma', '', 'plasma', 2, [TAGS['item'], TAGS['ammo'], TAGS['ammo_bullet']]),
     'rock_bullet': Inventory.Item('Rock Bullet', '', 'rock_bullet', 2, [TAGS['item'], TAGS['ammo'], TAGS['ammo_bullet']]),
+    'shadow_bullet': Inventory.Item('Shadow Bullet', '', 'shadow_bullet', 3, [TAGS['item'], TAGS['ammo'], TAGS['ammo_bullet']]),
+    'quick_arrow': Inventory.Item('Quick Arrow', '', 'quick_arrow', 5, [TAGS['item'], TAGS['ammo'], TAGS['ammo_arrow']]),
+    'quick_bullet': Inventory.Item('Quick Bullet', '', 'quick_bullet', 5, [TAGS['item'], TAGS['ammo'], TAGS['ammo_bullet']]),
 
     'glowing_splint': Inventory.Item('Glowing Splint', 'Shoots glows.', 'glowing_splint', 0, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
     'copper_wand': Inventory.Item('Copper Wand', '', 'copper_wand', 0, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
@@ -195,33 +243,60 @@ ITEMS = {
     'blood_wand': Inventory.Item('Blood Wand', '', 'blood_wand', 2, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
     'hematology': Inventory.Item('Hematology', 'Recovers 30 HP.', 'hematology', 3, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
     'rock_wand': Inventory.Item('Rock Wand', '', 'rock_wand', 3, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
+    'midnights_wand': Inventory.Item('Midnight\'s Wand', 'All darkness...', 'midnights_wand', 4, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
+    'spiritual_destroyer': Inventory.Item('Spiritual Destroyer', '\n\'Destroy the mark to enhance\'', 'spiritual_destroyer', 4, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
+    'evil_book': Inventory.Item('Evil Book', 'Full of corruption\n\n\'Change to enhance\'', 'evil_book', 5, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
+    'curse_book': Inventory.Item('Curse Book', 'Curse...', 'curse_book', 6, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
+    'shield_wand': Inventory.Item('Shield Wand', '+1145114 defense\n-100% speed', 'shield_wand', 6, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
+    'gravity_wand': Inventory.Item('Gravity Wand', 'Simulates gravity.', 'gravity_wand', 6, [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon']]),
 
     'shield': Inventory.Item('Simple Shield', '+7 touching defense\n+12 physic defense', 'shield', 1, [TAGS['item'], TAGS['accessory']]),
     'soul_bottle': Inventory.Item('Soul Bottle', '+0.5/sec regeneration','soul_bottle', 1, [TAGS['item'], TAGS['accessory']]),
     'dangerous_necklace': Inventory.Item('Dangerous Necklace', '+12% damage', 'dangerous_necklace', 1, [TAGS['item'], TAGS['accessory']]),
     'terrified_necklace': Inventory.Item('Terrified Necklace', 'When hp < 60%:\n+40% speed\n-0.5/sec regeneration', 'terrified_necklace', 1, [TAGS['item'], TAGS['accessory']]),
-    'sheath': Inventory.Item('Sheath', '+18% melee damage\n+16 touching defense\n+0.5/sec regeneration', 'sheath', 0, [TAGS['item'], TAGS['accessory']]),
-    'quiver': Inventory.Item('Quiver', '+10% ranged damage\n+15% speed\n+8 touching defense', 'quiver', 0, [TAGS['item'], TAGS['accessory']]),
-    'hat': Inventory.Item('Hat', '+30% magical damage\n+6/sec mana regeneration\n+1/sec regeneration\n+2 touching defense', 'hat', 0, [TAGS['item'], TAGS['accessory']]),
-    'firite_helmet': Inventory.Item('Firite Helmet', 'Enable night vision\n+30% melee damage\n+28 touching defense\n+19 magic defense\n+1.5/sec regeneration', 'firite_helmet', 3, [TAGS['item'], TAGS['accessory'], TAGS['night_vision']]),
-    'firite_cloak': Inventory.Item('Firite Cloak', 'Enable night vision\n+32% ranged damage\n+14 touching defense\n+7 magic defense\n+0.5/sec regeneration\n+45% speed', 'firite_cloak', 3, [TAGS['item'], TAGS['accessory'], TAGS['night_vision']]),
-    'firite_pluvial': Inventory.Item('Firite Pluvial', 'Enable night vision\n+44% magical damage\n+6 touching defense\n+12 magic defense\n+2.5/sec regeneration\n+16/sec mana regeneration', 'firite_pluvial', 3, [TAGS['item'], TAGS['accessory'], TAGS['night_vision']]),
+    'sheath': Inventory.Item('Sheath', '+18% melee damage\n+16 touching defense\n+0.5/sec regeneration', 'sheath', 0, [TAGS['item'], TAGS['accessory'], TAGS['major_accessory']]),
+    'quiver': Inventory.Item('Quiver', '+10% ranged damage\n+15% speed\n+8 touching defense', 'quiver', 0, [TAGS['item'], TAGS['accessory'], TAGS['major_accessory']]),
+    'hat': Inventory.Item('Hat', '+30% magical damage\n+6/sec mana regeneration\n+1/sec regeneration\n+2 touching defense', 'hat', 0, [TAGS['item'], TAGS['accessory'], TAGS['major_accessory']]),
+    'firite_helmet': Inventory.Item('Firite Helmet', 'Enable night vision\n+30% melee damage\n+28 touching defense\n+19 magic defense\n+1.5/sec regeneration', 'firite_helmet', 3, [TAGS['item'], TAGS['accessory'], TAGS['night_vision'], TAGS['major_accessory']]),
+    'firite_cloak': Inventory.Item('Firite Cloak', 'Enable night vision\n+32% ranged damage\n+14 touching defense\n+7 magic defense\n+0.5/sec regeneration\n+45% speed', 'firite_cloak', 3, [TAGS['item'], TAGS['accessory'], TAGS['night_vision'], TAGS['major_accessory']]),
+    'firite_pluvial': Inventory.Item('Firite Pluvial', 'Enable night vision\n+44% magical damage\n+6 touching defense\n+12 magic defense\n+2.5/sec regeneration\n+16/sec mana regeneration', 'firite_pluvial', 3, [TAGS['item'], TAGS['accessory'], TAGS['night_vision'],
+                                                                                                                                                                                                                   TAGS['major_accessory']]),
     'orange_ring': Inventory.Item('Orange Ring', 'Not afraid.\n+32% speed\n-2 touching defense', 'orange_ring', 3, [TAGS['item'], TAGS['accessory']]),
     'green_ring': Inventory.Item('Green Ring', 'Mercy.\n+18 touching defense\n-40% speed', 'green_ring', 3, [TAGS['item'], TAGS['accessory']]),
     'blue_ring': Inventory.Item('Blue Ring', 'Never lies.\n+8/sec mana regeneration\n+5 magic defense\n-1/sec regeneration', 'blue_ring', 3, [TAGS['item'], TAGS['accessory']]),
     'aimer': Inventory.Item('Aimer', 'Enables aiming to menaces.', 'aimer', 2, [TAGS['item'], TAGS['accessory'], TAGS['light_source']]),
     'winds_necklace': Inventory.Item('Winds Necklace', '+50% speed.\n-35% damage.\n+20% ranged damage.', 'winds_necklace', 2, [TAGS['item'], TAGS['accessory']]),
+    'windstorm_swordman_mark': Inventory.Item('Windstorm Swordman\'s Mark', '+45% melee damage\n-12% damage\n+32 touching defense\n+34 magic defense\n+3/sec regeneration\nNight vision\nY: sweep the weapon and dealing 3 times the damage\n80 mana cost',
+                                              'windstorm_swordman_mark', 4, [TAGS['item'], TAGS['accessory'], TAGS['night_vision'], TAGS['light_source'], TAGS['major_accessory']]),
+    'windstorm_assassin_mark': Inventory.Item('Windstorm Assassin\'s Mark', '+56% ranged damage\n-12% damage\n+17 touching defense\n+18 magic defense\n+1/sec regeneration\nNight vision\nY: use the weapon and sprint\n60 mana cost',
+                                              'windstorm_assassin_mark', 4, [TAGS['item'], TAGS['accessory'], TAGS['night_vision'], TAGS['light_source'], TAGS['major_accessory']]),
+    'windstorm_warlock_mark': Inventory.Item('Windstorm Warlock\s Mark', '+60% magical damage\n-12% damage\n+5 touching defense\n+12 magic defense\n+6/sec regeneration\n+15/sec mana regeneration\nNight vision\nY: use 20 times of the mana cost, summon 25 projectiles to the enemies',
+                                              'windstorm_warlock_mark', 4, [TAGS['item'], TAGS['accessory'], TAGS['night_vision'], TAGS['light_source'], TAGS['major_accessory']]),
+    'paladins_mark': Inventory.Item('Paladin\'s Mark', '+66% melee damage\n-15% damage\n+85 touching defense\n+70 magic defense\n+5/sec regeneration\nNight vision\nY: deal hallow stab\n40 mana cost',
+                                     'paladins_mark', 5, [TAGS['item'], TAGS['accessory'], TAGS['night_vision'], TAGS['light_source'], TAGS['major_accessory']]),
+    'daedalus_mark': Inventory.Item('Daedalus\'s Mark', '+72% ranged damage\n-15% damage\n+55 touching defense\n+45 magic defense\n+2/sec regeneration\nNight vision\nY: summon daedalus storm\n1200 piercing damage\n600 projectile speed\n60 mana cost',
+                                    'daedalus_mark', 5, [TAGS['item'], TAGS['accessory'], TAGS['night_vision'], TAGS['light_source'], TAGS['major_accessory']]),
+
+    'wings': Inventory.Item('Wings', 'The will to fly.\n-60% air resistance\n+80% speed', 'wings', 4, [TAGS['item'], TAGS['accessory'], TAGS['wings']]),
+    'honest_flyer': Inventory.Item('Honest Flyer', 'The will to fly.\n-80% air resistance\n-20% speed', 'honest_flyer', 5, [TAGS['item'], TAGS['accessory'], TAGS['wings']]),
 
     'weak_healing_potion': Inventory.Item('Weak Healing Potion', 'Recover 50 HP\nCausing potion sickness.', 'weak_healing_potion', 0, [TAGS['item'], TAGS['healing_potion']]),
     'weak_magic_potion': Inventory.Item('Weak Magic Potion', 'Recover 60 MP\nCausing potion sickness.', 'weak_magic_potion', 0, [TAGS['item'], TAGS['magic_potion']]),
     'crabapple': Inventory.Item('Crabapple', 'Heals 120 HP', 'crabapple', 2, [TAGS['item'], TAGS['healing_potion']]),
+    'butterscotch_pie': Inventory.Item('Butterscotch Pie', 'Heals 240 HP', 'butterscotch_pie', 4, [TAGS['item'], TAGS['healing_potion']]),
+    'seatea': Inventory.Item('Seatea', 'Recovers 150 MP', 'seatea', 4, [TAGS['item'], TAGS['magic_potion']]),
 
     'mana_crystal': Inventory.Item('Mana Crystal', '+15 maximum mana.', 'mana_crystal', 2, [TAGS['item']]),
     'firy_plant': Inventory.Item('Firy Plant', '+20 maximum hp', 'firy_plant', 3, [TAGS['item']]),
+    'spiritual_heart': Inventory.Item('Spiritual Heart', '+100 maximum hp\n+180 maximum mana\nSomething will happen.', 'spiritual_heart', 4, [TAGS['item']]),
 
     'suspicious_eye': Inventory.Item('Suspicious Eye', 'Summon the true eye', 'suspicious_eye', 0, [TAGS['item']]),
     'fire_slime': Inventory.Item('Fire Slime', 'Summon the magma king', 'fire_slime', 0, [TAGS['item']]),
-    'wind': Inventory.Item('Wind', 'Summon the sandstorm', 'wind', 0, [TAGS['item']])
+    'wind': Inventory.Item('Wind', 'Summon the sandstorm', 'wind', 0, [TAGS['item']]),
+    'blood_substance': Inventory.Item('Blood Substance', 'Summon the Abyss Eye', 'blood_substance', 0, [TAGS['item']]),
+    'mechanic_eye': Inventory.Item('Mechanic Eye', 'Summon the twin eyes', 'mechanic_eye', 0, [TAGS['item']]),
+    'mechanic_worm': Inventory.Item('Mechanic Worm', 'Summon the destroyer', 'mechanic_worm', 0, [TAGS['item']]),
+    'electric_unit': Inventory.Item('Electric Unit', 'Summon the CPU', 'electric_unit', 0, [TAGS['item']])
 }
 
 class Recipe:
@@ -314,10 +389,58 @@ RECIPES = [
     Recipe({'mysterious_ingot': 1, 'blood_ingot': 2, 'anvil': 1}, 'rock_bullet', 200),
     Recipe({'mysterious_ingot': 11, 'blood_ingot': 20, 'mana_crystal': 2}, 'rock_wand'),
     Recipe({'platinum_sword': 1, 'magic_sword': 1, 'bloody_sword': 1, 'volcano': 1, 'sand_sword': 1, 'storm_core': 1}, 'nights_edge'),
+    Recipe({'platinum_wand': 1, 'burning_book': 1, 'talent_book': 1, 'blood_wand': 1, 'rock_wand': 1, 'storm_core': 1}, 'midnights_wand'),
+    Recipe({'platinum_bow': 1, 'submachine_gun': 1, 'bloody_bow': 1, 'magma_assaulter': 1, 'recurve_bow': 1, 'storm_core': 1}, 'shadow'),
+    Recipe({'platinum_ingot': 10, 'blood_ingot': 5, 'firite_ingot': 5, 'mysterious_ingot': 5, 'storm_core': 1}, 'shadow_bullet', 500),
+    Recipe({'storm_core': 3}, 'windstorm_warlock_mark'),
+    Recipe({'storm_core': 3}, 'windstorm_assassin_mark'),
+    Recipe({'storm_core': 3}, 'windstorm_swordman_mark'),
+    Recipe({'soul': 60, 'mithrill_anvil': 1}, 'spiritual_heart'),
+    Recipe({'soul': 30, 'firy_plant': 5}, 'butterscotch_pie', 20),
+    Recipe({'soul': 10, 'magic_stone': 5}, 'seatea', 20),
+    Recipe({'palladium': 4}, 'palladium_ingot'),
+    Recipe({'mithrill': 4}, 'mithrill_ingot'),
+    Recipe({'titanium': 4}, 'titanium_ingot'),
+    Recipe({'mithrill_ingot': 10}, 'mithrill_anvil'),
+    Recipe({'palladium_ingot': 12, 'mithrill_anvil': 1}, 'palladium_sword'),
+    Recipe({'mithrill_ingot': 12, 'mithrill_anvil': 1}, 'mithrill_sword'),
+    Recipe({'titanium_ingot': 12, 'mithrill_anvil': 1}, 'titanium_sword'),
+    Recipe({'palladium_ingot': 15, 'mithrill_anvil': 1}, 'palladium_gun'),
+    Recipe({'mithrill_ingot': 15, 'mithrill_anvil': 1}, 'mithrill_gun'),
+    Recipe({'titanium_ingot': 15, 'mithrill_anvil': 1}, 'titanium_gun'),
+    Recipe({'spiritual_stabber': 1, 'evil_ingot': 20, 'soul': 120, 'mithrill_anvil': 1}, 'balanced_stabber'),
+    Recipe({'spiritual_piercer': 1, 'evil_ingot': 20, 'soul': 120, 'mithrill_anvil': 1}, 'discord_storm'),
+    Recipe({'spiritual_destroyer': 1, 'evil_ingot': 20, 'soul': 120, 'mithrill_anvil': 1}, 'evil_book'),
+    Recipe({'soul_of_flying': 20, 'soul': 100, 'mithrill_anvil': 1}, 'wings'),
+    Recipe({'palladium_ingot': 1, 'mithrill_ingot': 1, 'soul': 5, 'mithrill_anvil': 1}, 'saint_steel_ingot'),
+    Recipe({'mithrill_ingot': 1, 'titanium_ingot': 1, 'soul': 5, 'mithrill_anvil': 1}, 'daedalus_ingot'),
+    Recipe({'palladium_ingot': 1, 'titanium_ingot': 1, 'soul': 5, 'mithrill_anvil': 1}, 'dark_ingot'),
+    Recipe({'balanced_stabber': 1, 'saint_steel_ingot': 8, 'mithrill_anvil': 1}, 'excalibur'),
+    Recipe({'windstorm_swordman_mark': 1, 'saint_steel_ingot': 5, 'mithrill_anvil': 1}, 'paladins_mark'),
+    Recipe({'discord_storm': 1, 'daedalus_ingot': 8, 'mithrill_anvil': 1}, 'daedalus_stormbow'),
+    Recipe({'windstorm_assassin_mark': 1, 'daedalus_ingot': 5, 'mithrill_anvil': 1}, 'daedalus_mark'),
+    Recipe({'evil_book': 1, 'dark_ingot': 8, 'mithrill_anvil': 1}, 'curse_book'),
+    Recipe({'palladium_ingot': 24, 'soul_of_integrity': 10, 'mithrill_anvil': 1}, 'gravity_wand'),
+    Recipe({'wings': 1, 'soul_of_integrity': 10, 'mithrill_anvil': 1}, 'honest_flyer'),
+    Recipe({'soul_of_integrity': 2, 'soul': 1, 'mithrill_anvil': 1}, 'quick_arrow', 200),
+    Recipe({'soul_of_courage': 2, 'soul': 1, 'mithrill_anvil': 1}, 'quick_bullet', 200),
+    Recipe({'mithrill_ingot': 24, 'soul_of_kindness': 10, 'mithrill_anvil': 1}, 'shield_wand'),
+    Recipe({'excalibur': 1, 'soul_of_integrity': 10, 'soul_of_courage': 10, 'soul_of_kindness': 10, 'mithrill_anvil': 1},
+           'true_excalibur'),
+    Recipe({'nights_edge': 1, 'soul_of_integrity': 10, 'soul_of_courage': 10, 'soul_of_kindness': 10, 'mithrill_anvil': 1},
+           'true_nights_edge'),
+    Recipe({'shadow': 1, 'soul_of_integrity': 10, 'soul_of_courage': 10, 'soul_of_kindness': 10, 'mithrill_anvil': 1},
+           'true_shadow'),
+    Recipe({'daedalus_stormbow': 1, 'soul_of_integrity': 10, 'soul_of_courage': 10, 'soul_of_kindness': 10, 'mithrill_anvil': 1},
+           'true_daedalus_stormbow'),
 
     Recipe({'cell_organization': 10}, 'suspicious_eye'),
     Recipe({'cell_organization': 5, 'firite_ingot': 1}, 'fire_slime'),
     Recipe({'cell_organization': 5, 'mysterious_substance': 3}, 'wind'),
+    Recipe({'cell_organization': 30, 'storm_core': 3}, 'blood_substance'),
+    Recipe({'palladium_ingot': 1, 'mithrill_ingot': 1, 'titanium_ingot': 1, 'soul': 10}, 'mechanic_eye'),
+    Recipe({'mithrill_ingot': 1, 'titanium_ingot': 1, 'palladium_ingot': 1, 'soul': 10}, 'mechanic_worm'),
+    Recipe({'titanium_ingot': 1, 'palladium_ingot': 1, 'mithrill_ingot': 1, 'soul': 10}, 'electric_unit'),
 
 ]
 
