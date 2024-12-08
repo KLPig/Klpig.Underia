@@ -12,6 +12,9 @@ class Loots:
     def __call__(self):
         return []
 
+    def get_all_items(self):
+        return []
+
 class IndividualLoot(Loots):
     def __init__(self, item, chance, amount_min, amount_max):
         self.item = item
@@ -25,6 +28,9 @@ class IndividualLoot(Loots):
         else:
             return []
 
+    def get_all_items(self):
+        return [self.item]
+
 class SelectionLoot(Loots):
     def __init__(self, items: list[tuple[str, int, int]], selection_min, selection_max):
         self.items = items
@@ -35,6 +41,9 @@ class SelectionLoot(Loots):
         selection_size = random.randint(self.selection_min, self.selection_max)
         return [(item, random.randint(rmin, rmax)) for item, rmin, rmax in random.choices(self.items, k=selection_size)]
 
+    def get_all_items(self):
+        return [item for item, _, _ in self.items]
+
 class LootTable:
     def __init__(self, loot_list: list[Loots]):
         self.loot_list = loot_list
@@ -44,6 +53,12 @@ class LootTable:
         for loot in self.loot_list:
             loot_items.extend(loot())
         return loot_items
+
+    def get_all_items(self):
+        all_items = []
+        for loot in self.loot_list:
+            all_items.extend(loot.get_all_items())
+        return all_items
 
 class MonsterAI(mover.Mover):
     MASS = 120

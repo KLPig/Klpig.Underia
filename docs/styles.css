@@ -54,3 +54,22 @@ h2, p.desc {
     background-color: #fff;
 }
 
+drop {
+    display: inline-block;
+    background-color: #fff;
+    border: 2px dashed #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 10px;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+}
+
+td {
+    min-width: 100px;
+}
+
+tr {
+    overflow: auto;
+}
