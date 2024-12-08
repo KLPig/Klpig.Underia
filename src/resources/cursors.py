@@ -1,4 +1,5 @@
 import pygame as pg
+from pygame.cursors import thickarrow_strings
 
 target_cursor = (
     'x' * 10 + ' ' * 12 + 'x' * 10,
@@ -55,8 +56,9 @@ sword_cursor = (
     'xx              ',
     'xx              '
 )
+
 sword_cursor = [t.replace('x', '#').replace('.', 'x').replace('#', '.') for t in sword_cursor]
 
-arrow_cursor_cursor = pg.cursors.Cursor(pg.SYSTEM_CURSOR_HAND)
+arrow_cursor_cursor = pg.cursors.Cursor((24, 24), (0, 0), *pg.cursors.compile(pg.cursors.thickarrow_strings))
 target_cursor_cursor = pg.cursors.Cursor((32, 32), (16, 16), *pg.cursors.compile(target_cursor))
 sword_cursor_cursor = pg.cursors.Cursor((16, 16), (15, 0), *pg.cursors.compile(sword_cursor))

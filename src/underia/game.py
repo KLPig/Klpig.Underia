@@ -4,12 +4,11 @@ from src.underia import player, entity, projectiles, weapons
 import os
 import pygame
 import random
-import pickle
 
 class Game:
     ITEM_SPLIT_MIN = 1
     ITEM_SPLIT_MAX = 2
-    TIME_SPEED = .00008
+    TIME_SPEED = .00004
     CHUNK_SIZE = 100
 
     def __init__(self):
@@ -86,25 +85,25 @@ class Game:
         except IndexError:
             return 'forest'
         s = pygame.Surface((1, 1))
-        if color == s.map_rgb((255, 127, 0)):
+        if color == s.map_rgb((255, 127, 0, 0)):
             return 'desert'
-        elif color == s.map_rgb((0, 255, 0)):
+        elif color == s.map_rgb((0, 255, 0, 0)):
             return 'forest'
-        elif color == s.map_rgb((255, 41, 0)):
+        elif color == s.map_rgb((255, 41, 0, 0)):
             return 'hell'
-        elif color == s.map_rgb((255, 255, 255)):
+        elif color == s.map_rgb((255, 255, 255, 0)):
             return 'snowland'
-        elif color == s.map_rgb((0, 127, 0)):
+        elif color == s.map_rgb((0, 127, 0, 0)):
             return 'rainforest'
-        elif color == s.map_rgb((127, 127, 127)):
+        elif color == s.map_rgb((127, 127, 127, 0)):
             return 'heaven'
         else:
-            return 'none'
+            return 'forest'
 
     def update(self):
-        self.chunk_pos = (int(self.player.obj.pos[0]) // self.CHUNK_SIZE + 120, int(self.player.obj.pos[1]) // self.CHUNK_SIZE + 120)
         self.player.obj.pos = (max(-120 * self.CHUNK_SIZE + 121, min(120 * self.CHUNK_SIZE - 121, self.player.obj.pos[0])),
                                max(-120 * self.CHUNK_SIZE + 121, min(120 * self.CHUNK_SIZE - 121, self.player.obj.pos[1])))
+        self.chunk_pos = (int(self.player.obj.pos[0]) // self.CHUNK_SIZE + 120, int(self.player.obj.pos[1]) // self.CHUNK_SIZE + 120)
         self.day_time += self.TIME_SPEED
         self.day_time %= 1.0
         self.on_update()
@@ -112,12 +111,10 @@ class Game:
         self.events = pygame.event.get()
         for event in self.events:
             if event.type == pygame.QUIT:
-                open(self.save, 'wb').write(pickle.dumps(self))
-                return False
+                raise resources.Interrupt()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    open(self.save, 'wb').write(pickle.dumps(self))
-                    return False
+                    raise resources.Interrupt()
                 else:
                     self.pressed_keys.append(event.key)
             elif event.type == pygame.KEYUP:
@@ -157,7 +154,8 @@ class Game:
                     for i in range(k):
                         self.drop_items.append(entity.Entities.DropItem((monster.obj.pos[0] + random.randint(-10, 10), monster.obj.pos[1] + random.randint(-10, 10)), item, amount // k + (i < amount % k)))
             for monster2 in self.entities:
-                monster.obj.object_collide(monster2.obj)
+                monster.obj.object_gravitational(monster2.obj)
+                monster.obj.object_collision(monster2.obj, (monster2.img.get_width() + monster2.img.get_height()) // 4 + (monster.img.get_width() + monster.img.get_height()) // 4)
         for drop_item in self.drop_items:
             drop_item.update()
             if drop_item.hp_sys.hp <= 0:

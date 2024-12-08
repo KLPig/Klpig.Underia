@@ -1,5 +1,3 @@
-from pydoc import plainpager
-
 import pygame as pg
 import copy
 from src.visual import effects
@@ -12,7 +10,7 @@ class Displayer:
     SCREEN_HEIGHT = 900
 
     def __init__(self):
-        self.canvas = pg.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pg.SRCALPHA)
+        self.canvas = pg.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pg.SRCALPHA | pg.HWACCEL)
         self.canvas.fill((255, 255, 255, 255))
         self.alpha_masks: list[tuple[int, int, int, int]] = []
         self.shake_x, self.shake_y = 0, 0
@@ -36,8 +34,10 @@ class Displayer:
         rect.x += self.shake_x
         rect.y += self.shake_y
         self.shake_x, self.shake_y = 0, 0
+        window.fill((0, 0, 0))
         window.blit(blit_surface, rect)
         self.canvas.fill((255, 255, 255, 255))
+        self.canvas.set_alpha(255)
         self.SCREEN_WIDTH = int(1600 * game.get_game().player.get_screen_scale())
         self.SCREEN_HEIGHT = int(900 * game.get_game().player.get_screen_scale())
         if self.lsw != self.SCREEN_WIDTH or self.lsh != self.SCREEN_HEIGHT:

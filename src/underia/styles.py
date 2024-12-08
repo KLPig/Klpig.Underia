@@ -53,6 +53,7 @@ def text(txt: str) -> str:
             i += 1
     if word not in Dictionary.keys() and len(word) < 50:
         Dictionary[word] = s
+    return s
 
 def item_mouse(x, y, name, no, amount, scale, anchor='left'):
     if name == 'null':

@@ -6,9 +6,11 @@ from src.resources import position
 from src.values import damages as dmg
 from src.values import effects
 from src.visual import effects as eff
+from src import constants
 
 class Weapon:
-    def __init__(self, name, damages: dict[int, float], kb: float, img_index: str, speed: int, at_time: int, auto_fire: bool = False):
+    def __init__(self, name, damages: dict[int, float], kb: float, img_index: str, speed: int, at_time: int,
+                 auto_fire: bool = False):
         self.name = name
         self.damages = damages
         self.img_index = img_index
@@ -114,6 +116,45 @@ class SweepWeapon(Weapon):
                         e.obj.apply_force(vector.Vector(r, self.knock_back * 120000 / e.obj.MASS))
                     e.hp_sys.enable_immume()
 
+class Spear(Weapon):
+    def __init__(self, name, damages: dict[int, float], kb: float, img: pg.Surface, speed: int, at_time: int, forward_speed: int, st_pos: int, auto_fire: bool = False):
+        super().__init__(name, damages, kb, img, speed, at_time, auto_fire)
+        self.st_pos = st_pos
+        self.forward_speed = forward_speed
+        self.pos = 0
+
+    def on_start_attack(self):
+        self.x = 0
+        self.y = 0
+        px, py = position.relative_position(
+            position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos())))
+        self.face_to(px, py)
+        self.forward(-self.st_pos)
+        self.pos = -self.st_pos
+
+    def on_attack(self):
+        self.forward(self.timer * 2 - self.at_time)
+        self.forward(self.forward_speed)
+        self.pos += self.forward_speed
+        super().on_attack()
+        self.damage()
+
+    def damage(self):
+        self.rot %= 360
+        rot_range = range(int(self.rot - 15), int(self.rot + 16))
+        for e in game.get_game().entities:
+            dps = e.obj.pos
+            px = dps[0] - game.get_game().player.obj.pos[0]
+            py = dps[1] - game.get_game().player.obj.pos[1]
+            r = int(vector.coordinate_rotation(px, py)) % 360
+            if r in rot_range or r + 360 in rot_range:
+                if vector.distance(px, py) < self.img.get_width() + self.pos + ((e.img.get_width() + e.img.get_height()) // 2 if e.img is not None else 10):
+                    for t, d in self.damages.items():
+                        e.hp_sys.damage(d * game.get_game().player.attack * game.get_game().player.attacks[0], t)
+                    if not e.hp_sys.is_immune:
+                        e.obj.apply_force(vector.Vector(r, self.knock_back * 120000 / e.obj.MASS))
+                    e.hp_sys.enable_immume()
+
 class AutoSweepWeapon(SweepWeapon):
     def __init__(self, name, damages: dict[int, float], kb: float, img: pg.Surface, speed: int, at_time: int, rot_speed: int, st_pos: int, double_sided: bool = False):
         super().__init__(name, damages, kb, img, speed, at_time, rot_speed, st_pos, double_sided, True)
@@ -143,6 +184,36 @@ class Blade(AutoSweepWeapon):
         self.rotate(abs(self.st_pos) * r)
         self.rot_speed = abs(self.rot_speed) * -r
 
+class WillSword(Blade):
+    def damage(self):
+        if self.rot_speed > 0:
+            rot_range = range(int(self.rot - self.rot_speed), int(self.rot + self.rot_speed + 1))
+        else:
+            rot_range = range(int(self.rot - self.rot_speed), int(self.rot + self.rot_speed - 1), -1)
+        for e in game.get_game().entities:
+            dps = e.obj.pos
+            px = dps[0] - self.x - game.get_game().player.obj.pos[0]
+            py = dps[1] - self.y - game.get_game().player.obj.pos[1]
+            r = int(vector.coordinate_rotation(px, py)) % 360
+            if r in rot_range or r + 360 in rot_range or (self.double_sided and ((r + 180) % 360 in rot_range or r + 180 in rot_range)):
+                for t, d in self.damages.items():
+                    e.hp_sys.damage(d * game.get_game().player.attack * game.get_game().player.attacks[0], t)
+                if not e.hp_sys.is_immune:
+                    e.obj.apply_force(vector.Vector(r, self.knock_back * 120000 / e.obj.MASS))
+                e.hp_sys.enable_immume()
+
+class BlackHoleSword(Blade):
+    def on_start_attack(self):
+        super().on_start_attack()
+        game.get_game().player.obj.MASS = 10 ** 9
+
+    def on_end_attack(self):
+        super().on_end_attack()
+        game.get_game().player.obj.MASS = 20
+
+    def damage(self):
+        super().damage()
+        game.get_game().player.obj.FRICTION = 0
 
 class MagicBlade(Blade):
     def on_start_attack(self):
@@ -426,6 +497,36 @@ class MagicWeapon(Weapon):
         game.get_game().projectiles.append(self.projectile((self.x + game.get_game().player.obj.pos[0], self.y + game.get_game().player.obj.pos[1]), self.rot))
         game.get_game().player.mana -= self.mana_cost
 
+class ArcaneWeapon(MagicWeapon):
+    def __init__(self, name, damages: dict[int, float], kb: float, img: pg.Surface, speed: int, at_time: int, projectile: type(projectiles.Projectiles.Projectile), mana_cost: int, talent_cost: float, auto_fire: bool = False):
+        super().__init__(name, damages, kb, img, speed, at_time, projectile, mana_cost, auto_fire)
+        self.talent_cost = talent_cost
+
+    def on_start_attack(self):
+        if game.get_game().player.talent < self.talent_cost:
+            self.timer = 0
+            return
+        game.get_game().player.talent -= self.talent_cost
+        super().on_start_attack()
+
+class ForbiddenCurseTime(ArcaneWeapon):
+    def on_start_attack(self):
+        if game.get_game().player.talent < self.talent_cost:
+            self.timer = 0
+            return
+        game.get_game().player.talent -= self.talent_cost
+        if game.get_game().player.mana < self.mana_cost:
+            self.timer = 0
+            return
+        game.get_game().player.mana -= self.mana_cost
+        self.face_to(*position.relative_position(position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))))
+        fps = constants.FPS
+        if fps == 40:
+            fps = 10
+        else:
+            fps = 40
+        constants.FPS = fps
+
 class MidnightsWand(MagicWeapon):
     def __init__(self, name, damages: dict[int, float], kb: float, img: pg.Surface, speed: int, at_time: int, projectile: type(projectiles.Projectiles.Projectile), mana_cost: int, auto_fire: bool = False, add_pos: int = 0):
         super().__init__(name, damages, kb, img, speed, at_time, projectile, mana_cost, auto_fire)
@@ -636,6 +737,19 @@ def set_weapons():
                                          1, 4, 88, 180),
         'true_nights_edge': TrueNightsEdge('true nights edge', {dmg.DamageTypes.PHYSICAL: 5280, dmg.DamageTypes.MAGICAL: 1240}, 0.6, 'items_weapons_true_nights_edge',
                                             1, 32, 60, 100),
+        'will_sword': WillSword('will sword', {dmg.DamageTypes.PHYSICAL: 1500}, 2, 'items_weapons_will_sword',
+                                1, 6, 28, 90),
+        'black_hole_sword': BlackHoleSword('black hole sword', {dmg.DamageTypes.PHYSICAL: 3200}, 0, 'items_weapons_black_hole_sword',
+                                        0, 6, 60, 90),
+
+        'spear': Spear('spear', {dmg.DamageTypes.PHYSICAL: 28}, 0.5, 'items_weapons_spear',
+                       2, 6, 15, 60, auto_fire=True),
+        'platinum_spear': Spear('platinum spear', {dmg.DamageTypes.PHYSICAL: 50}, 0.6, 'items_weapons_platinum_spear',
+                                2, 4, 30, 80, auto_fire=True),
+        'firite_spear': Spear('firite spear', {dmg.DamageTypes.PHYSICAL: 150}, 0.7, 'items_weapons_firite_spear',
+                              2, 10, 20, 100, auto_fire=True),
+        'nights_pike': Spear('nights pike', {dmg.DamageTypes.PHYSICAL: 420}, 1.8, 'items_weapons_nights_pike',
+                                   2, 5, 60, 160, auto_fire=True),
 
         'bow': Bow('bow', {dmg.DamageTypes.PIERCING: 6}, 0.1, 'items_weapons_bow',
                    3, 8, 10),
@@ -676,7 +790,7 @@ def set_weapons():
                            1, 5, 800, auto_fire=True),
         'titanium_gun': Gun('titanium gun', {dmg.DamageTypes.PIERCING: 2200}, 0.4, 'items_weapons_titanium_gun',
                             3, 24, 1500, auto_fire=True),
-        'true_shadow': Gun('true shadow', {dmg.DamageTypes.PIERCING: 9000}, 0.5, 'items_weapons_true_shadow',
+        'true_shadow': Gun('true shadow', {dmg.DamageTypes.PIERCING: 35000}, 0.5, 'items_weapons_true_shadow',
                            5, 10, 5000, auto_fire=True),
 
         'glowing_splint': MagicWeapon('glowing splint', {dmg.DamageTypes.MAGICAL: 5}, 0.1,
@@ -721,7 +835,16 @@ def set_weapons():
                                                          10, projectiles.Projectiles.GravityWand, 160, True),
         'shield_wand': MagicWeapon('shield wand', {dmg.DamageTypes.MAGICAL: 240}, 0.8,
                                                             'items_weapons_shield_wand', 80,
-                                                            10, projectiles.Projectiles.ShieldWand, 100, auto_fire=True)
+                                                            10, projectiles.Projectiles.ShieldWand, 100, auto_fire=True),
+        'forbidden_curse__spirit': ArcaneWeapon('forbidden curse  spirit', {dmg.DamageTypes.ARCANE: 4}, 0.8,
+                                                         'items_weapons_forbidden_curse__spirit', 30,
+                                                         10, projectiles.Projectiles.ForbiddenCurseSpirit, 40, 1.5, True),
+        'forbidden_curse__evil': ArcaneWeapon('forbidden curse  evil', {dmg.DamageTypes.ARCANE: 23}, 0.8,
+                                                         'items_weapons_forbidden_curse__evil', 1,
+                                                         5, projectiles.Projectiles.ForbiddenCurseEvil, 10, 0.2, True),
+        'forbidden_curse__time': ForbiddenCurseTime('forbidden curse  time', {}, 0.8,
+                                                         'items_weapons_forbidden_curse__time', 10,
+                                                         50, projectiles.Projectiles.Projectile, 300, 5, True),
     }
 
 set_weapons()

@@ -95,7 +95,8 @@ class Projectiles:
             imr = self.d_img.get_rect(center = self.obj.pos)
             for entity in game.get_game().entities:
                 if imr.collidepoint(entity.obj.pos[0], entity.obj.pos[1]) or entity.d_img.get_rect(center = entity.obj.pos).collidepoint(self.obj.pos[0], self.obj.pos[1]):
-                    entity.hp_sys.damage(weapons.WEAPONS['magic_sword'].damages[damages.DamageTypes.PHYSICAL] * 0.8 * game.get_game().player.attack * game.get_game().player.attacks[0], damages.DamageTypes.PHYSICAL)
+                    entity.hp_sys.damage(weapons.WEAPONS['magic_sword'].damages[damages.DamageTypes.PHYSICAL] * 0.8 * game.get_game().player.attack * game.get_game().player.attacks[0],
+                                         damages.DamageTypes.PHYSICAL)
                     self.dead = True
                     break
 
@@ -117,7 +118,8 @@ class Projectiles:
             imr = self.d_img.get_rect(center = self.obj.pos)
             for entity in game.get_game().entities:
                 if imr.collidepoint(entity.obj.pos[0], entity.obj.pos[1]) or entity.d_img.get_rect(center = entity.obj.pos).collidepoint(self.obj.pos[0], self.obj.pos[1]):
-                    entity.hp_sys.damage(weapons.WEAPONS['glowing_splint'].damages[damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[2], damages.DamageTypes.MAGICAL)
+                    entity.hp_sys.damage(weapons.WEAPONS['glowing_splint'].damages[damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[2],
+                                         damages.DamageTypes.MAGICAL)
                     entity.hp_sys.effect(effects.Burning(5, weapons.WEAPONS['glowing_splint'].damages[damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[2] // 10 + 1))
                     self.dead = True
                     break
@@ -147,10 +149,14 @@ class Projectiles:
             super().update()
             if self.tick > 100:
                 self.dead = True
+            self.damage()
+
+        def damage(self):
             imr = self.d_img.get_rect(center = self.obj.pos)
             for entity in game.get_game().entities:
                 if imr.collidepoint(entity.obj.pos[0], entity.obj.pos[1]) or entity.d_img.get_rect(center = entity.obj.pos).collidepoint(self.obj.pos[0], self.obj.pos[1]):
-                    entity.hp_sys.damage(weapons.WEAPONS['burning_book'].damages[damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[2] * 0.5, damages.DamageTypes.MAGICAL)
+                    entity.hp_sys.damage(weapons.WEAPONS['burning_book'].damages[damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[2] * 0.5, damages.DamageTypes.MAGICAL,
+                                         )
                     entity.hp_sys.effect(effects.Burning(9, weapons.WEAPONS['burning_book'].damages[damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[2] // 10 + 1))
                     self.dead = True
 
@@ -189,6 +195,7 @@ class Projectiles:
     class CopperWand(Glow):
         DAMAGE_AS = 'copper_wand'
         IMG = 'projectiles_copper_wand'
+        DMG_TYPE = damages.DamageTypes.MAGICAL
 
         def __init__(self, pos, rotation):
             super().__init__(pos, rotation)
@@ -198,11 +205,18 @@ class Projectiles:
             super().update()
             if self.obj.velocity.get_net_value() < 3:
                 self.dead = True
+
+        def damage(self):
+            kb = weapons.WEAPONS[self.DAMAGE_AS].knock_backc
             imr = self.d_img.get_rect(center = self.obj.pos)
             for entity in game.get_game().entities:
                 if imr.collidepoint(entity.obj.pos[0], entity.obj.pos[1]) or entity.d_img.get_rect(center = entity.obj.pos).collidepoint(self.obj.pos[0], self.obj.pos[1]):
-                    entity.hp_sys.damage(weapons.WEAPONS[self.DAMAGE_AS].damages[damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[2], damages.DamageTypes.MAGICAL)
+                    entity.hp_sys.damage(weapons.WEAPONS[self.DAMAGE_AS].damages[self.DMG_TYPE] * game.get_game().player.attack * game.get_game().player.attacks[2], self.DMG_TYPE)
                     self.dead = True
+                    if not entity.hp_sys.is_immune:
+                        r = vector.coordinate_rotation(entity.obj.pos[0] - self.obj.pos[0],
+                                                       entity.obj.pos[1] - self.obj.pos[1])
+                        entity.obj.apply_force(vector.Vector(r, kb * 120000 / entity.obj.MASS))
                     break
 
     class IronWand(CopperWand):
@@ -240,6 +254,15 @@ class Projectiles:
             else:
                 self.dead = False
 
+    class ForbiddenCurseEvil(RockWand):
+        DAMAGE_AS = 'forbidden_curse__evil'
+        IMG = 'projectiles_forbidden_curse__evil'
+        DMG_TYPE = damages.DamageTypes.ARCANE
+
+        def update(self):
+            super().update()
+            self.obj.apply_force(vector.Vector(self.obj.velocity.get_net_rotation(), 200))
+
     class MagicCircle(Projectile):
         DAMAGE_AS = 'magic_circle'
         IMG = 'projectiles_magic_circle'
@@ -247,6 +270,7 @@ class Projectiles:
         ALPHA = 127
         DURATION = 100
         AUTO_FOLLOW = True
+        DMG_TYPE = damages.DamageTypes.MAGICAL
 
         def __init__(self, pos, rotation):
             self.obj = mover.Mover(pos)
@@ -275,7 +299,7 @@ class Projectiles:
             for entity in game.get_game().entities:
                 ex, ey = entity.obj.pos
                 if vector.distance(self.obj.pos[0] - ex, self.obj.pos[1] - ey) < self.d_img.get_width() // 2 + entity.d_img.get_width() // 2:
-                    entity.hp_sys.damage(weapons.WEAPONS[self.DAMAGE_AS].damages[damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[2], damages.DamageTypes.MAGICAL)
+                    entity.hp_sys.damage(weapons.WEAPONS[self.DAMAGE_AS].damages[self.DMG_TYPE] * game.get_game().player.attack * game.get_game().player.attacks[2], self.DMG_TYPE)
 
     class CurseBook(MagicCircle):
         DAMAGE_AS = 'curse_book'
@@ -291,6 +315,15 @@ class Projectiles:
         def __init__(self, pos, rotation):
             super().__init__(pos, rotation)
             game.get_game().player.hp_sys.effect(effects.Shield(10, 255))
+
+    class ForbiddenCurseSpirit(MagicCircle):
+        DAMAGE_AS = 'forbidden_curse__spirit'
+        IMG = 'projectiles_forbidden_curse__spirit'
+        DURATION = 240
+        ALPHA = 80
+        ROT_SPEED = 3
+        AUTO_FOLLOW = True
+        DMG_TYPE = damages.DamageTypes.ARCANE
 
     class GravityWand(MagicCircle):
         DAMAGE_AS = 'gravity_wand'

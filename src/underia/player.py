@@ -29,7 +29,6 @@ class Player:
     def __init__(self):
         self.obj = PlayerObject((400, 300))
         self.hp_sys = hp_system.HPSystem(200)
-        self.hp_sys(op='config', immune_time=20, true_drop_speed_max_value=1)
         self.ax, self.ay = 0, 0
         self.weapons = 4 * [weapons.WEAPONS['null']]
         self.sel_weapon = 0
@@ -48,6 +47,10 @@ class Player:
         self.attacks = [1, 1, 1]
         self.in_ui = False
         self.touched_item = ''
+        self.hp_sys(op='config', immune_time=10, true_drop_speed_max_value=1)
+        self.talent = 0
+        self.max_talent = 0
+        self.strike = 0
         # self.hp_sys.defenses[damages.DamageTypes.TOUCHING] = 12
         # self.hp_sys.defenses[damages.DamageTypes.PHYSICAL] = 3
 
@@ -55,7 +58,8 @@ class Player:
         ACCESSORY_DEFENSE = {'shield': 7, 'green_ring': 18, 'orange_ring': -2, 'sheath': 16, 'quiver': 8,
                              'hat': 2, 'firite_helmet': 28, 'firite_cloak': 14, 'firite_pluvial': 6,
                              'windstorm_swordman_mark': 32, 'windstorm_assassin_mark': 17, 'windstorm_warlock_mark': 5,
-                             'paladins_mark': 85, 'daedalus_mark': 55}
+                             'paladins_mark': 85, 'daedalus_mark': 55, 'palladium_glove': 90, 'mithrill_glove': 85,
+                             'titanium_glove': 108}
         defe = 0
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_DEFENSE.keys():
@@ -73,7 +77,8 @@ class Player:
     def calculate_magical_defense(self):
         ACCESSORY_DEFENSE = {'blue_ring': 5, 'firite_helmet': 19, 'firite_cloak': 7, 'firite_pluvial': 12,
                              'windstorm_swordman_mark': 34, 'windstorm_assassin_mark': 18, 'windstorm_warlock_mark': 12,
-                             'paladins_mark': 70, 'daedalus_mark': 45}
+                             'paladins_mark': 70, 'daedalus_mark': 45, 'palladium_glove': 65, 'mithrill_glove': 95,
+                             'titanium_glove': 40}
         defe = 0
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_DEFENSE.keys():
@@ -84,7 +89,8 @@ class Player:
         ACCESSORY_REGEN = {'soul_bottle': 0.0075, 'blue_ring': -0.015, 'quiver': 0.0075, 'hat': 0.015,
                            'firite_helmet': .0225, 'firite_cloak': .0075, 'firite_pluvial': .0375,
                            'windstorm_swordman_mark': .045, 'windstorm_assassin_mark': .015, 'windstorm_warlock_mark': .09,
-                           'paladins_mark': .075, 'daedalus_mark': .03}
+                           'paladins_mark': .075, 'daedalus_mark': .03, 'palladium_glove': .27, 'mithrill_glove': .045,
+                           'titanium_glove': .15}
         if self.hp_sys.hp < self.hp_sys.max_hp * 0.6:
             ACCESSORY_REGEN['terrified_necklace'] = -0.0075
         regen = 0
@@ -94,7 +100,8 @@ class Player:
         return regen
 
     def calculate_magic_regeneration(self):
-        ACCESSORY_REGEN = {'blue_ring': 0.13, 'hat': 0.1, 'firite_pluvial': .12, 'windstorm_warlock_mark': .225}
+        ACCESSORY_REGEN = {'blue_ring': 0.13, 'hat': 0.1, 'firite_pluvial': .12, 'windstorm_warlock_mark': .225,
+                           'palladium_glove': .12, 'mithrill_glove': .6, 'titanium_glove': .48}
         regen = 0
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_REGEN.keys():
@@ -104,7 +111,8 @@ class Player:
     def calculate_damage(self):
         ACCESSORY_DAMAGE = {'dangerous_necklace': 0.12, 'winds_necklace': -0.35, 'windstorm_swordman_mark': -.12,
                             'windstorm_assassin_mark': -.12, 'windstorm_warlock_mark': -.12, 'paladins_mark': -.15,
-                            'daedalus_mark': -.15}
+                            'daedalus_mark': -.15, 'palladium_glove': .25, 'mithrill_glove': .32,
+                            'titanium_glove': .5}
         dmg = 1.0
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_DAMAGE.keys():
@@ -115,7 +123,8 @@ class Player:
 
     def calculate_speed(self):
         ACCESSORY_SPEED = {'orange_ring': 0.32, 'green_ring': -0.4, 'quiver': 0.15, 'firite_cloak': .45,
-                           'winds_necklace': .5, 'wings': .8, 'honest_flyer': -.2}
+                           'winds_necklace': .5, 'wings': .8, 'honest_flyer': -.2, 'palladium_glove': .16,
+                           'mithrill_glove': .8, 'titanium_glove': .2}
         if self.hp_sys.hp < self.hp_sys.max_hp * 0.6:
             ACCESSORY_SPEED['terrified_necklace'] = 0.4
         spd = 1.0
@@ -190,10 +199,17 @@ class Player:
             b = max(0, b - 10)
         return b
 
+    def calculate_strike_chance(self):
+        return 0.08
+
     def update(self):
+        self.talent = min(self.talent + 0.005, self.max_talent)
         self.hp_sys.pos = self.obj.pos
         self.attack = self.calculate_damage()
-        self.attacks = [self.calculate_melee_damage(), self.calculate_ranged_damage(), self.calculate_magic_damage()]
+        self.strike = self.calculate_strike_chance()
+        self.attacks = [self.calculate_melee_damage() * (1 + (random.random() < self.strike)),
+                        self.calculate_ranged_damage() * (1 + (random.random() < self.strike)),
+                        self.calculate_magic_damage() * (1 + (random.random() < self.strike))]
         if len([1 for eff in self.hp_sys.effects if eff.NAME == 'Mana Sickness']):
             self.attack *= 0.5
         self.obj.SPEED = self.calculate_speed() * 20
@@ -219,7 +235,6 @@ class Player:
         self.ax, self.ay = game.get_game().get_anchor()
         pg.draw.circle(displayer.canvas, (255, 0, 0), position.displayed_position(self.obj.pos), 10)
         self.hp_sys.update()
-        self.weapons[self.sel_weapon].update()
         w = self.weapons[self.sel_weapon]
         if inventory.TAGS['magic_weapon'] in inventory.ITEMS[w.name.replace(' ', '_')].tags:
             if pg.K_y in game.get_game().get_keys():
@@ -294,13 +309,17 @@ class Player:
         displayer.SCREEN_HEIGHT = displayer.canvas.get_height()
         hp_l = min(300.0, self.hp_sys.max_hp // 2)
         mp_l = min(300.0, self.max_mana)
+        tp_l = 8 * self.max_talent
         hp_p = self.hp_sys.hp / self.hp_sys.max_hp
         mp_p = self.mana / self.max_mana
+        tp_p = self.talent / self.max_talent if self.max_talent else 0
         pg.draw.rect(displayer.canvas, (80, 0, 0), (10, 10, hp_l, 25))
         pg.draw.rect(displayer.canvas, (0, 0, 80), (10 + hp_l, 10, mp_l, 25))
+        pg.draw.rect(displayer.canvas, (0, 80, 0), (10 + hp_l + mp_l, 10, tp_l, 25))
         pg.draw.rect(displayer.canvas, (255, 0, 0), (10, 10, hp_l * hp_p, 25))
         pg.draw.rect(displayer.canvas, (0, 0, 255), (10 + hp_l + mp_l - mp_l * mp_p, 10, mp_l * mp_p, 25))
-        pg.draw.rect(displayer.canvas, (255, 255, 255), (10, 10, hp_l + mp_l, 25), width=2)
+        pg.draw.rect(displayer.canvas, (0, 255, 0), (10 + hp_l + mp_l, 10, tp_l * tp_p, 25))
+        pg.draw.rect(displayer.canvas, (255, 255, 255), (10, 10, hp_l + mp_l + tp_l, 25), width=2)
         for i in range(len(self.hp_sys.effects)):
             img = pg.transform.scale(game.get_game().graphics['effect_' + self.hp_sys.effects[i].IMG], (72, 72))
             imr = img.get_rect(topright=(game.get_game().displayer.SCREEN_WIDTH - 10 - 80 * len(self.hp_sys.effects) + 80 * i, 10))
@@ -314,13 +333,14 @@ class Player:
                 displayer.canvas.blit(f, fr)
         for _entity in game.get_game().entities:
             _entity.obj.touched_player = False
-            if self.hp_sys.is_immune:
-                continue
-            if self.obj.object_collide(_entity.obj):
+            _entity.obj.object_collision(self.obj, (_entity.img.get_width() + _entity.img.get_height()) // 4 + 50)
+            if self.obj.object_collision(_entity.obj, (_entity.img.get_width() + _entity.img.get_height()) // 4 + 50):
                 _entity.obj.touched_player = True
-                if _entity.obj.TOUCHING_DAMAGE:
+                if _entity.obj.TOUCHING_DAMAGE and not self.hp_sys.is_immune:
                     self.hp_sys.damage(_entity.obj.TOUCHING_DAMAGE, damages.DamageTypes.TOUCHING)
                     self.hp_sys.enable_immume()
+            self.obj.object_gravitational(_entity.obj)
+            _entity.obj.object_gravitational(self.obj)
         if pg.Rect(10, 10, 200 + self.max_mana, 25).collidepoint(game.get_game().displayer.reflect(*pg.mouse.get_pos())):
             f = displayer.font.render(f"HP: {int(self.hp_sys.hp)}/{self.hp_sys.max_hp} MP: {int(self.mana)}/{self.max_mana}({self.obj.pos[0]:.1f}, {self.obj.pos[1]:.1f})", True, (255, 255, 255))
             displayer.canvas.blit(f, game.get_game().displayer.reflect(*pg.mouse.get_pos()))
@@ -382,6 +402,12 @@ class Player:
                                     self.max_mana = 300
                                     self.inventory.remove_item(item)
                                     game.get_game().stage = max(game.get_game().stage, 1)
+                            elif item.id == 'mystery_core':
+                                if self.max_talent < 10:
+                                    self.max_talent += 1
+                                else:
+                                    self.talent = min(self.talent + 5, self.max_talent)
+                                self.inventory.remove_item(item)
                             elif inventory.TAGS['ammo_arrow'] in item.tags:
                                 self.ammo = (item.id, self.inventory.items[item.id])
                                 self.inventory.items[item.id] = 0
@@ -405,6 +431,11 @@ class Player:
                                 entity.entity_spawn(entity.Entities.Destroyer, 4000, 4000, 0, 1145, 100000)
                             elif item.id == 'electric_unit':
                                 entity.entity_spawn(entity.Entities.TheCPU, 2000, 2000, 0, 1145, 100000)
+                            elif item.id == 'mechanic_spider':
+                                entity.entity_spawn(entity.Entities.Greed, 2000, 2000, 0, 1145, 100000)
+                            elif item.id == 'watch':
+                                entity.entity_spawn(entity.Entities.EyeOfTime, 2000, 2000, 0, 1145, 100000)
+                            self.in_ui = True
             for i in range(len(self.accessories)):
                 styles.item_mouse(10 + i * 90, game.get_game().displayer.SCREEN_HEIGHT - 90, self.accessories[i].replace(' ', '_'), str(i), '1', 1)
                 rect = pg.Rect(10 + i * 90, game.get_game().displayer.SCREEN_HEIGHT - 90, 90, 90)
@@ -510,6 +541,7 @@ class Player:
         if self.in_ui:
             pg.mouse.set_cursor(cursors.arrow_cursor_cursor)
         else:
+            self.weapons[self.sel_weapon].update()
             w = self.weapons[self.sel_weapon]
             if inventory.TAGS['magic_weapon'] in inventory.ITEMS[w.name.replace(' ', '_')].tags or \
                     inventory.TAGS['bow'] in inventory.ITEMS[w.name.replace(' ', '_')].tags or \

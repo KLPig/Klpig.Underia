@@ -2,7 +2,6 @@ from src import resources, visual, physics, saves_chooser, underia
 import pygame as pg
 import pickle
 import os
-from tkinter import messagebox
 
 pg.init()
 
@@ -19,11 +18,10 @@ try:
         game.pressed_mouse = []
         game.drop_items = []
         game.last_biome = ('forest', 0)
-        game.day_time = 0
+        game.player.hp_sys.dmg_t = 0
     else:
         game = underia.Game()
 except Exception as e:
-    messagebox.showerror("Error", f"An error occurred while loading the save file/creating a new game:\n{e}")
     raise e
 
 pg.display.set_caption('Underia')
@@ -38,11 +36,14 @@ game.player.weapons = 4 * [underia.WEAPONS['null']]
     #game.player.inventory.add_item(underia.ITEMS[i])
 game.player.sel_weapon = 0
 game.player.inventory.sort()
+game.player.hp_sys(op='config', immune_time=10, true_drop_speed_max_value=1)
 
 
 @game.update_function
 def update():
     for entity in game.entities:
+        if entity.IS_MENACE:
+            continue
         d = physics.distance(entity.obj.pos[0] - game.player.obj.pos[0], entity.obj.pos[1] - game.player.obj.pos[1])
         if d > 8000 or (d > 1200 and not entity.is_suitable(game.get_biome())):
             game.entities.remove(entity)
@@ -80,7 +81,7 @@ def update():
         underia.entity_spawn(underia.Entities.Bloodflower, target_number=5, to_player_max=2000, to_player_min=1500, rate=0.5)
         underia.entity_spawn(underia.Entities.RedWatcher, target_number=2, to_player_max=2000, to_player_min=1800, rate=0.2)
         if game.stage > 0:
-            underia.entity_spawn(underia.Entities.MechanicEye, target_number=12, to_player_max=2000, to_player_min=1500, rate=0.3)
+            underia.entity_spawn(underia.Entities.MechanicEye, target_number=1, to_player_max=2000, to_player_min=1500, rate=0.2)
     underia.entity_spawn(underia.Entities.Star, target_number=5, to_player_max=2000, to_player_min=1500, rate=0.3)
 try:
     game.run()
@@ -104,4 +105,5 @@ except Exception as err:
     game.player.weapons = []
     open(resources.get_save_path(game.save), 'wb').write(pickle.dumps(game))
     pg.quit()
-    raise err
+    if type(err) is not resources.Interrupt:
+        raise resources.UnderiaError(f"An error occurred while running the game:\n{err}") from err

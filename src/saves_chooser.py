@@ -20,7 +20,7 @@ def choose_save():
     global n, selects, anchor, cmds
     pg.init()
     pg.display.set_caption("Save Chooser")
-    screen = pg.display.set_mode((1600, 900), pg.RESIZABLE | pg.DOUBLEBUF | pg.HWSURFACE | pg.SCALED)
+    screen = pg.display.set_mode((1600, 900), pg.RESIZABLE | pg.HWSURFACE | pg.DOUBLEBUF | pg.FULLSCREEN | pg.SCALED)
     font = pg.font.Font(None, 30)
     while True:
         for event in pg.event.get():
