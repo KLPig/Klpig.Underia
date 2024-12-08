@@ -16,7 +16,7 @@ f = "<!DOCTYPE html><html><head>\n<title>Underia Items</title>\n"\
 f += "<h1>Underia Recipes</h1>"
 
 f += "<table>"
-img_str = "<div class='item %s' id='%s-%s'> <img src='../src/assets/graphics/items/%s.png'/></div>"
+img_str = "<div class='item %s' id='%s-%s'> <img src='assets/graphics/items/%s.png'/></div>"
 item_str = "<h2 style='color: rgb%s'>%s</h2><p class='desc' style='color: rgb%s'>%s</p>"
 
 

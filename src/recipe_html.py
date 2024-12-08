@@ -17,7 +17,7 @@ f += "<h1>Underia Recipes</h1>"
 
 f += "<table>"
 img_str = ("<div class='item %s' id='%s-%s' onclick='location.href=\"./items.html#%s-main\"'"
-           "> <img src='../src/assets/graphics/items/%s.png'/> <p class='amount'>%s</p> </div>")
+           "> <img src='assets/graphics/items/%s.png'/> <p class='amount'>%s</p> </div>")
 
 
 for recipe in recipes:
