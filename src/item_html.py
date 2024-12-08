@@ -32,6 +32,6 @@ for _, item in underia.ITEMS.items():
 
 f += "</table></body></html>"
 
-with open("../doc/items.html", "w") as ff:
+with open("../docs/items.html", "w") as ff:
     ff.write(f)
 

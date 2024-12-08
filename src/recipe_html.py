@@ -33,6 +33,6 @@ for recipe in recipes:
     f += "</tr>\n"
 f += "</table></body></html>"
 
-with open("../doc/recipes.html", "w") as ff:
+with open("../docs/recipes.html", "w") as ff:
     ff.write(f)
 
