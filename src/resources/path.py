@@ -1,7 +1,7 @@
 import os
 from tkinter import messagebox
 
-DEBUG = True
+DEBUG = False
 
 if not DEBUG:
     pt = '/Library/Underia'
