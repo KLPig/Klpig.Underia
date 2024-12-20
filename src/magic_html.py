@@ -14,7 +14,9 @@ f = "<!DOCTYPE html><html><head>\n<title>Underia Items</title>\n" \
     "<link rel='stylesheet' type='text/css' href='styles.css'>\n" \
     "<meta charset='UTF-8'></head><body>"
 
-f += "<h1>Underia Items</h1>"
+f += "<h1>Underia Magics</h1>"
+
+f += open('../docs/header.html').read()
 
 f += "<table>"
 img_str = "<div class='item %s' id='%s-%s'> <img src='assets/graphics/items/%s.png'/></div>"

@@ -16,6 +16,8 @@ f = "<!DOCTYPE html><html><head>\n<title>Underia Entities</title>\n" \
 
 f += "<h1>Underia Entities</h1>"
 
+f += open('../docs/header.html').read()
+
 f += "<table>"
 img_str = ("<td><div class='item %s drop' id='%s-%s' onclick='location.href=\"./items.html#%s-main\"'"
            "> <img src='assets/graphics/items/%s.png'/> <p class='amount'>%s</p> </div></td>")
