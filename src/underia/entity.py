@@ -1,7 +1,6 @@
 import copy
 import math
 import random
-from xml.dom.minidom import Entity
 
 import pygame as pg
 
@@ -9,6 +8,7 @@ from src.physics import mover, vector
 from src.resources import position
 from src.underia import game, styles, inventory
 from src.values import hp_system, damages, effects
+from src import constants
 
 
 class Loots:
@@ -71,10 +71,42 @@ class MonsterAI(mover.Mover):
     MASS = 120
     FRICTION = 0.95
     TOUCHING_DAMAGE = 10
+    PREFER_DISTANCE = 1.5
+
+    IDLE_TIME = 100
+    IDLE_SPEED = 120
+    IDLE_CHANGER = 50
 
     def __init__(self, pos):
         super().__init__(pos)
         self.touched_player = False
+        self.cur_target = None
+        self.idle_timer = 0
+        self.idle_rotation = 0
+
+    def update(self):
+        super().update()
+        self.get_target()
+
+    def idle(self):
+        if self.idle_timer > self.IDLE_TIME + random.randint(-50, 50):
+            self.idle_timer = 0
+            self.idle_rotation = (self.idle_rotation + random.randint(-self.IDLE_CHANGER, self.IDLE_CHANGER)) % 360
+        self.apply_force(vector.Vector(self.idle_rotation, self.IDLE_SPEED))
+
+    def get_target(self):
+        es = game.get_game().get_player_objects()
+        if self.cur_target not in es:
+            self.cur_target = None
+        d = constants.INFINITY if self.cur_target is None else vector.distance(self.pos[0] - self.cur_target.pos[0],
+                                                                               self.pos[1] - self.cur_target.pos[1])
+        for e in es:
+            if e is not self.cur_target:
+                new_d = vector.distance(self.pos[0] - e.pos[0], self.pos[1] - e.pos[1])
+                if new_d * self.PREFER_DISTANCE < d:
+                    self.cur_target = e
+                    d = new_d
+
 
     def on_update(self):
         pass
@@ -85,13 +117,12 @@ class TreeMonsterAI(MonsterAI):
     FRICTION = 0.8
 
     def on_update(self):
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        if vector.distance(px, py) < 500:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 120))
-        else:
-            pass
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if vector.distance(px, py) < 500:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 120))
 
 
 class CactusAI(TreeMonsterAI):
@@ -109,22 +140,28 @@ class EyeAI(MonsterAI):
 
     def on_update(self):
         self.timer = (self.timer + 1) % 240
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        if self.touched_player:
-            self.timer = -100
-        if self.timer < 110:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py) + 180, 12))
-        elif self.timer < 190:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 24))
-        elif self.timer < 195:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 100))
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if self.touched_player:
+                self.timer = -100
+            if self.timer < 110:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py) + 180, 12))
+            elif self.timer < 190:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 24))
+            elif self.timer < 195:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 100))
+        else:
+            self.idle()
 
 
 class SlowMoverAI(MonsterAI):
     MASS = 200
     FRICTION = 0.8
+
+    IDLE_TIME = 120
+    IDLE_SPEED = 100
 
     def __init__(self, pos):
         super().__init__(pos)
@@ -163,67 +200,82 @@ class BloodflowerAI(CloseBloodflowerAI):
         self.timer = 0
 
     def on_update(self):
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
+        player = self.cur_target
         self.timer += 1
         if self.timer > 100:
             self.timer = 0
-        if vector.distance(px, py) < 800:
-            if self.timer > 20:
-                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 120))
-            if self.touched_player:
-                self.timer = 0
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if vector.distance(px, py) < 800:
+                if self.timer > 20:
+                    self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 120))
+                if self.touched_player:
+                    self.timer = 0
+            else:
+                self.idle()
         else:
-            self.idle_timer += 1
-            if self.idle_timer > random.randint(50, 200):
-                self.idle_timer = 0
-                self.idle_rotation = (self.idle_rotation + random.randint(-50, 50)) % 360
-            self.apply_force(vector.Vector(self.idle_rotation, 100))
+            self.idle()
 
 
 class SoulFlowerAI(BloodflowerAI):
     TOUCHING_DAMAGE = 68
 
+class SnowDrakeAI(BloodflowerAI):
+    TOUCHING_DAMAGE = 128
+    MASS = 220
 
 class CellsAI(EyeAI):
     TOUCHING_DAMAGE = 89
     MASS = 720
 
+    IDLE_SPEED = 400
+
     def on_update(self):
         self.timer = (self.timer + 1) % 240
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        if self.touched_player:
-            self.timer = -50
-        if self.timer < 50:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py) + 180, 150))
-        elif self.timer < 160:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 320))
-        elif self.timer < 195:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 1500))
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if self.touched_player:
+                self.timer = -50
+            if self.timer < 50:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py) + 180, 150))
+            elif self.timer < 160:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 320))
+            elif self.timer < 195:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 1500))
+        else:
+            self.idle()
 
+class IceCapAI(SlowMoverAI):
+    MASS = 200
+    TOUCHING_DAMAGE = 148
 
 class MechanicEyeAI(CellsAI):
     MASS = 200
     TOUCHING_DAMAGE = 65
 
+    IDLE_SPEED = 600
+
     def on_update(self):
         self.timer += 1
         if self.timer > 30:
             self.timer = 0
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        if self.touched_player:
-            self.timer = -20
-        if self.timer < 0:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), -300))
-        if vector.distance(px, py) > 1200:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 120))
-        if 0 <= self.timer < 10:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 800))
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if self.touched_player:
+                self.timer = -20
+            if self.timer < 0:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), -300))
+            if vector.distance(px, py) > 1200:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 120))
+            if 0 <= self.timer < 10:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 800))
+        else:
+            self.idle()
 
 
 class RedWatcherAI(SlowMoverAI):
@@ -276,23 +328,26 @@ class StarAI(MonsterAI):
     FRICTION = 1
     MASS = 200
 
+    PREFER_DISTANCE = 1
+
+    IDLE_SPEED = 60
+
     def __init__(self, pos):
         super().__init__(pos)
         self.idle_timer = 0
         self.idle_rotation = 0
 
     def on_update(self):
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        if vector.distance(px, py) < 1200:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 40))
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if vector.distance(px, py) < 1200:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 40))
+            else:
+                self.idle()
         else:
-            self.idle_timer += 1
-            if self.idle_timer > random.randint(50, 100):
-                self.idle_timer = 0
-                self.idle_rotation = (self.idle_rotation + random.randint(-50, 50)) % 360
-            self.apply_force(vector.Vector(self.idle_rotation, 20))
+            self.idle()
 
 
 class LeafAI(StarAI):
@@ -305,26 +360,29 @@ class MagmaKingAI(MonsterAI):
     MASS = 360
     TOUCHING_DAMAGE = 65
 
+    IDLE_SPEED = 500
+
     def __init__(self, pos):
         super().__init__(pos)
         self.timer = 0
         self.state = 0
 
     def on_update(self):
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        if self.state == 0:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 450))
-        elif self.state == 1:
-            if self.timer % 40 < 5:
-                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 5000))
-        else:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), -200))
-        if self.timer > random.randint(50, 200):
-            self.state = (self.state + 1) % 3
-            self.timer = 0
-        self.timer += 1
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if self.state == 0:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 450))
+            elif self.state == 1:
+                if self.timer % 40 < 5:
+                    self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 5000))
+            else:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), -200))
+            if self.timer > random.randint(50, 200):
+                self.state = (self.state + 1) % 3
+                self.timer = 0
+            self.timer += 1
 
 
 class SandStormAI(MonsterAI):
@@ -355,7 +413,7 @@ class SandStormAI(MonsterAI):
             self.rot = (self.rot + 13) % 360
             if self.d < 600:
                 self.d += 20
-        pos = game.get_game().player.obj.pos
+        pos = self.cur_target.pos if self.cur_target is not None else (0, 0)
         ax, ay = vector.rotation_coordinate(self.rot)
         px, py = pos[0] + ax * self.d, pos[1] + ay * self.d
         self.pos = ((self.pos[0] + px * 5) // 6, (self.pos[1] + py * 5) // 6)
@@ -431,6 +489,8 @@ class FaithlessEyeAI(MonsterAI):
     MASS = 800
     TOUCHING_DAMAGE = 100
 
+    PREFER_DISTANCE = 2
+
     def __init__(self, pos):
         super().__init__(pos)
         self.rot = 0
@@ -445,7 +505,7 @@ class FaithlessEyeAI(MonsterAI):
             self.state = (self.state + 1) % 2
             self.tick = 0
         self.tick += 1
-        px, py = game.get_game().player.obj.pos
+        px, py = self.cur_target.pos if self.cur_target is not None else (0, 0)
         if self.state == 0:
             if self.tick % (100 - 20 * self.phase) < 30:
                 self.apply_force(vector.Vector(vector.coordinate_rotation(px - self.pos[0], py - self.pos[1]),
@@ -462,15 +522,17 @@ class DestroyerAI(SlowMoverAI):
     FRICTION = 0.9
     TOUCHING_DAMAGE = 220
 
+    PREFER_DISTANCE = 1
+
     def __init__(self, pos):
         super().__init__(pos)
         self.tick = 0
         self.state = 0
 
     def on_update(self):
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
+        player = self.cur_target.pos if self.cur_target is not None else (0, 0)
+        px = player[0] - self.pos[0]
+        py = player[1] - self.pos[1]
         if self.tick > 200:
             self.state = (self.state + 1) % 2
             self.tick = 0
@@ -487,6 +549,8 @@ class DevilPythonAI(DestroyerAI):
     FRICTION = 0.9
     TOUCHING_DAMAGE = 320
 
+    PREFER_DISTANCE = 3
+
     def __init__(self, pos):
         super().__init__(pos)
         self.tick = 0
@@ -495,30 +559,33 @@ class DevilPythonAI(DestroyerAI):
         self.tp = 0, 0
 
     def on_update(self):
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        if self.tick > 200:
-            self.state = (self.state + 1) % 2
-            self.tick = 0
-            self.rot = random.randint(0, 360)
-        self.tick += 1
-        if self.state == 0:
-            self.rot += 3
-            ax, ay = vector.rotation_coordinate(self.rot)
-            px += ax * 1000
-            py += ay * 1000
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), vector.distance(px, py) * 100))
-        else:
-            if self.tick % 80 == 1:
-                self.rot = vector.coordinate_rotation(px, py)
-            elif self.tick % 80 < 50:
-                self.apply_force(vector.Vector(self.rot, 150000))
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if self.tick > 200:
+                self.state = (self.state + 1) % 2
+                self.tick = 0
+                self.rot = random.randint(0, 360)
+            self.tick += 1
+            if self.state == 0:
+                self.rot += 3
+                ax, ay = vector.rotation_coordinate(self.rot)
+                px += ax * 1000
+                py += ay * 1000
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), vector.distance(px, py) * 100))
+            else:
+                if self.tick % 80 == 1:
+                    self.rot = vector.coordinate_rotation(px, py)
+                elif self.tick % 80 < 50:
+                    self.apply_force(vector.Vector(self.rot, 150000))
 
 class JevilAI(SlowMoverAI):
     MASS = 1000
     FRICTION = 0.9
-    TOUCHING_DAMAGE = 380
+    TOUCHING_DAMAGE = 250
+
+    IDLE_SPEED = 1500
 
     def __init__(self, pos):
         super().__init__(pos)
@@ -528,25 +595,36 @@ class JevilAI(SlowMoverAI):
         self.ax, self.ay = 1, 0
 
     def on_update(self):
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        if self.tick < 0:
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if self.tick < 0:
+                self.tick += 1
+                return
             self.tick += 1
-            return
-        self.tick += 1
-        if self.tick > 50:
-            self.state = (self.state + 1) % 4
-            self.tick = 0
-            self.ax, self.ay = vector.rotation_coordinate(random.randint(0, 360))
+            if self.tick > 50:
+                self.state = (self.state + 1) % 8
+                self.tick = 0
+                self.ax, self.ay = vector.rotation_coordinate(random.randint(0, 360))
+                if self.state % 2 == 0:
+                    self.pos = (px + self.pos[0] + self.ax * 600, py + self.pos[1] + self.ay * 600)
+                if self.state == 1:
+                    if random.randint(0, 1):
+                        game.get_game().play_sound('chaos_chaos', 0.99 ** int(vector.distance(px, py) / 10))
+                    else:
+                        game.get_game().play_sound('i_can_do_anything', 0.99 ** int(vector.distance(px, py) / 10))
             if self.state % 2 == 0:
-                self.pos = (player.obj.pos[0] + self.ax * 600, player.obj.pos[1] + self.ay * 600)
-        if self.state % 2 == 0:
-            px += self.ax * 600
-            py += self.ay * 600
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), vector.distance(px, py) * 10))
+                px += self.ax * 600
+                py += self.ay * 600
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), vector.distance(px, py) * 10))
+            else:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 4000))
         else:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 4000))
+            self.tick += 1
+            if self.tick > 50:
+                self.tick = 0
+            self.idle()
 
 class JevilKnifeAI(SlowMoverAI):
     MASS = 1000
@@ -557,13 +635,14 @@ class JevilKnifeAI(SlowMoverAI):
         super().__init__(pos)
         self.r = 0
         self.d = 0
+        self.upper = None
 
     def on_update(self):
         self.r = (self.r + 4) % 360
         self.d = (self.d + 1) % 240
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0] + ((math.cos(self.d / 120 * math.pi) + 1) * 500 + 500) * math.cos(math.radians(self.r))
-        py = player.obj.pos[1] - self.pos[1] + ((math.cos(self.d / 120 * math.pi) + 1) * 500 + 500) * math.sin(math.radians(self.r))
+        pos = self.upper.cur_target.pos if self.upper.cur_target is not None else (0, 0)
+        px = pos[0] - self.pos[0] + ((math.cos(self.d / 120 * math.pi) + 1) * 500 + 500) * math.cos(math.radians(self.r))
+        py = pos[1] - self.pos[1] + ((math.cos(self.d / 120 * math.pi) + 1) * 500 + 500) * math.sin(math.radians(self.r))
         self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), vector.distance(px, py) * 50))
 
 
@@ -579,29 +658,30 @@ class TheCPUAI(SlowMoverAI):
         self.phase = 1
 
     def on_update(self):
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        if self.tick < 0:
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            if self.tick < 0:
+                self.tick += 1
+                return
+            if self.tick > 100:
+                self.state = (self.state + 1) % 2
+                self.tick = 0
+                if random.randint(0, 1):
+                    px *= -1
+                if random.randint(0, 1):
+                    py *= -1
+                if self.phase == 2 and random.randint(0, 1):
+                    t = px
+                    px = py
+                    py = t
+                self.pos = (px + player.pos[0], py + player.pos[1])
             self.tick += 1
-            return
-        if self.tick > 100:
-            self.state = (self.state + 1) % 2
-            self.tick = 0
-            if random.randint(0, 1):
-                px *= -1
-            if random.randint(0, 1):
-                py *= -1
-            if self.phase == 2 and random.randint(0, 1):
-                t = px
-                px = py
-                py = t
-            self.pos = (px + player.obj.pos[0], py + player.obj.pos[1])
-        self.tick += 1
-        if self.state == 0:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 15000))
-        else:
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), vector.distance(px, py) * 40))
+            if self.state == 0:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 15000))
+            else:
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), vector.distance(px, py) * 40))
 
 
 class GreedAI(SlowMoverAI):
@@ -621,38 +701,50 @@ class GreedAI(SlowMoverAI):
 
     def on_update(self):
         self.pos = self.dp
-        player = game.get_game().player
-        px = player.obj.pos[0] - self.pos[0]
-        py = player.obj.pos[1] - self.pos[1]
-        self.tick += 1
-        if self.tick > 80:
-            self.state = (self.state + 1) % 4
-            if self.state == 3:
-                self.rot = (self.rot + 180) % 360
-            self.tick = 0
-        if self.state == 0:
-            self.TOUCHING_DAMAGE = self.TD
-            self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 600))
-        else:
-            self.TOUCHING_DAMAGE = 0
-            ax, ay = vector.rotation_coordinate(self.rot)
-            px += ax * 320
-            py += ay * 320
-            self.pos = (self.pos[0] + px // 5, self.pos[1] + py // 5)
-            self.velocity.clear()
-            self.velocity.add(vector.Vector(0, self.KB))
-            if self.state == 1:
-                self.rot = (self.rot + 3) % 360
-            elif self.state == 3:
-                self.rot = (self.rot + 10) % 360
+        player = self.cur_target
+        if player is not None:
+            px = player.pos[0] - self.pos[0]
+            py = player.pos[1] - self.pos[1]
+            self.tick += 1
+            if self.tick > 80:
+                self.state = (self.state + 1) % 4
+                if self.state == 3:
+                    self.rot = (self.rot + 180) % 360
+                self.tick = 0
+            if self.state == 0:
+                self.TOUCHING_DAMAGE = self.TD
+                self.apply_force(vector.Vector(vector.coordinate_rotation(px, py), 600))
             else:
-                pg.draw.line(game.get_game().displayer.canvas, (255, 0, 0), position.displayed_position(self.pos),
-                             position.displayed_position((self.pos[0] + px - 800 * ax, self.pos[1] + py - 800 * ay)),
-                             width=50)
-        self.dp = self.pos
+                self.TOUCHING_DAMAGE = 0
+                ax, ay = vector.rotation_coordinate(self.rot)
+                px += ax * 320
+                py += ay * 320
+                self.pos = (self.pos[0] + px // 5, self.pos[1] + py // 5)
+                self.velocity.clear()
+                self.velocity.add(vector.Vector(0, self.KB))
+                if self.state == 1:
+                    self.rot = (self.rot + 3) % 360
+                elif self.state == 3:
+                    self.rot = (self.rot + 10) % 360
+                else:
+                    pg.draw.line(game.get_game().displayer.canvas, (255, 0, 0), position.displayed_position(self.pos),
+                                 position.displayed_position((self.pos[0] + px - 800 * ax, self.pos[1] + py - 800 * ay)),
+                                 width=50)
+            self.dp = self.pos
 
+class CardBombAI(SlowMoverAI):
+    MASS = 600
+    FRICTION = 0.95
+    TOUCHING_DAMAGE = 120
+
+    def __init__(self, pos):
+        super().__init__(pos)
+
+    def update(self):
+        self.apply_force(vector.Vector(180, 1200))
 
 class Entities:
+
     class Tag(inventory.Inventory.Item.Tag):
         pass
 
@@ -669,6 +761,10 @@ class Entities:
         ENTITY_TAGS = []
         IS_MENACE = False
 
+        SOUND_SPAWN = None
+        SOUND_HURT = None
+        SOUND_DEATH = None
+
         def __init__(self, pos, img=None, ai: type(MonsterAI) = MonsterAI, hp=120,
                      hp_sys: hp_system.HPSystem | None = None):
             self.obj: mover.Mover = ai(pos)
@@ -682,6 +778,12 @@ class Entities:
             self.d_img = self.img
             self.rot = 0
             self.touched_player = False
+            try:
+                if self.SOUND_SPAWN is not None:
+                    self.play_sound('spawn_' + self.SOUND_SPAWN)
+            except ValueError:
+                pass
+            self.hp_sys.SOUND_HURT = self.SOUND_HURT
 
         def set_rotation(self, rot):
             self.rot = rot
@@ -695,6 +797,11 @@ class Entities:
             else:
                 self.d_img = self.img
             self.d_img = pg.transform.scale_by(self.d_img, 1 / game.get_game().player.get_screen_scale())
+
+        def play_sound(self, sound):
+            d = vector.distance(self.obj.pos[0] - game.get_game().player.obj.pos[0],
+                                self.obj.pos[1] - game.get_game().player.obj.pos[1])
+            game.get_game().play_sound(sound, 0.99 ** int(d / 10))
 
         def is_suitable(self, biome: str):
             return True
@@ -733,12 +840,31 @@ class Entities:
                                               (255, 255, 255), (0, 0, 0))
                     displayer.canvas.blit(f, game.get_game().displayer.reflect(*pg.mouse.get_pos()))
 
+    class Dummy(Entity):
+        NAME = 'Dummy'
+        DISPLAY_MODE = 0
+        LOOT_TABLE = LootTable([])
+        ENTITY_TAGS = []
+        IS_MENACE = False
+
+        SOUND_SPAWN = None
+        SOUND_HURT = None
+        SOUND_DEATH = None
+
+        def __init__(self, pos):
+            super().__init__(pos, game.get_game().graphics['entity_dummy'], BuildingAI, 100)
+            self.hp_sys.IMMUNE = True
+
     class WormEntity:
         NAME = 'Entity'
         DISPLAY_MODE = 1
         LOOT_TABLE = LootTable([])
         ENTITY_TAGS = []
         IS_MENACE = False
+
+        SOUND_SPAWN = None
+        SOUND_HURT = None
+        SOUND_DEATH = None
 
         def __init__(self, pos, length, img_head=None, img_body=None, head_ai: type(MonsterAI) = MonsterAI, hp=120,
                      body_length=60, body_touching_damage=100):
@@ -759,6 +885,15 @@ class Entities:
             for b in self.body:
                 b.DISPLAY_MODE = 1
                 b.NAME = self.NAME
+            try:
+                if self.SOUND_SPAWN is not None:
+                    self.body[0].play_sound('spawn_' + self.SOUND_SPAWN)
+            except ValueError:
+                pass
+            self.hp_sys.SOUND_HURT = self.SOUND_HURT
+
+        def play_sound(self, sound):
+            self.body[0].play_sound(sound)
 
         def update(self):
             self.body[0].update()
@@ -795,6 +930,8 @@ class Entities:
             IndividualLoot('watcher_wand', 0.06, 1, 1),
         ])
 
+        SOUND_HURT = 'sticky'
+
         def is_suitable(self, biome: str):
             return True
 
@@ -815,8 +952,13 @@ class Entities:
             IndividualLoot('platinum', 1, 80, 90),
             SelectionLoot([('orange_ring', 1, 1), ('blue_ring', 1, 1), ('green_ring', 1, 1)], 1, 2),
             IndividualLoot('aimer', 0.2, 1, 1),
+            IndividualLoot('tip2', 1, 1, 1),
         ])
         IS_MENACE = True
+
+        SOUND_SPAWN = 'boss'
+        SOUND_HURT = 'sticky'
+        SOUND_DEATH = 'huge_monster'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_true_eye'], TrueEyeAI, 3800)
@@ -866,6 +1008,8 @@ class Entities:
             IndividualLoot('copper', 0.6, 15, 40),
         ])
 
+        SOUND_DEATH = 'monster'
+
         def is_suitable(self, biome: str):
             return biome in ['forest', 'rainforest']
 
@@ -879,7 +1023,11 @@ class Entities:
             IndividualLoot('copper', 0.9, 15, 25),
             IndividualLoot('cell_organization', 0.3, 2, 8),
             IndividualLoot('leaf', 0.5, 7, 12),
+            IndividualLoot('spikeflower', 0.18, 1, 1),
         ])
+
+        SOUND_HURT = 'corrupt'
+        SOUND_DEATH = 'sticky'
 
         def is_suitable(self, biome: str):
             return biome in ['forest', 'rainforest']
@@ -897,7 +1045,11 @@ class Entities:
             IndividualLoot('steel', 0.9, 15, 25),
             IndividualLoot('cell_organization', 0.9, 12, 16),
             IndividualLoot('platinum', 0.3, 10, 20),
+            IndividualLoot('spikeflower', 0.36, 1, 1),
         ])
+
+        SOUND_HURT = 'corrupt'
+        SOUND_DEATH = 'sticky'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_bloodflower'], BloodflowerAI, 760)
@@ -913,6 +1065,8 @@ class Entities:
             IndividualLoot('magic_stone', 0.2, 5, 10),
             IndividualLoot('iron', 0.9, 15, 25),
         ])
+
+        SOUND_DEATH = 'monster'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_red_watcher'], RedWatcherAI, 800)
@@ -930,11 +1084,30 @@ class Entities:
             IndividualLoot('cactus_wand', 0.2, 1, 1),
         ])
 
+        SOUND_DEATH = 'monster'
+
         def is_suitable(self, biome: str):
             return biome in ['desert']
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_cactus'], CactusAI, 345)
+
+    class ConiferousTree(Entity):
+        NAME = 'Coniferous Tree'
+        DISPLAY_MODE = 3
+        LOOT_TABLE = LootTable([
+            IndividualLoot('wood', 0.9, 15, 25),
+            IndividualLoot('steel', 0.8, 20, 30),
+            IndividualLoot('copper', 0.6, 15, 40),
+        ])
+
+        SOUND_DEATH = 'monster'
+
+        def is_suitable(self, biome: str):
+            return biome in ['snowland']
+
+        def __init__(self, pos):
+            super().__init__(pos, game.get_game().graphics['entity_coniferous_tree'], CactusAI, 330)
 
     class MagmaCube(Entity):
         NAME = 'Magma Cube'
@@ -945,6 +1118,9 @@ class Entities:
             IndividualLoot('blood_ingot', 0.6, 5, 10),
             IndividualLoot('firite_ingot', 0.5, 8, 15),
         ])
+
+        SOUND_HURT = 'sticky'
+        SOUND_DEATH = 'sticky'
 
         def is_suitable(self, biome: str):
             return biome in ['hell']
@@ -987,6 +1163,8 @@ class Entities:
             IndividualLoot('magic_stone', 0.9, 12, 15),
             IndividualLoot('mana_crystal', 0.5, 1, 2)
         ])
+
+        SOUND_HURT = 'corrupt'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_star'], StarAI, 350)
@@ -1033,7 +1211,12 @@ class Entities:
             IndividualLoot('blood_ingot', 0.8, 5, 10),
             IndividualLoot('firite_ingot', 1, 30, 40),
             IndividualLoot('firy_plant', 1, 10, 20),
+            IndividualLoot('tip3', 1, 1, 1),
         ])
+
+        SOUND_SPAWN = 'boss'
+        SOUND_HURT = 'sticky'
+        SOUND_DEATH = 'huge_monster'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_magma_king'], MagmaKingAI, 7800)
@@ -1064,7 +1247,12 @@ class Entities:
         LOOT_TABLE = LootTable([
             IndividualLoot('mysterious_ingot', 1, 15, 35),
             IndividualLoot('storm_core', 1, 2, 4),
+            IndividualLoot('tornado', 0.5, 1, 1),
+            IndividualLoot('tip4', 1, 1, 1),
         ])
+
+        SOUND_SPAWN = 'boss'
+        SOUND_DEATH = 'huge_monster'
 
         def __init__(self, pos, hp_sys, rot):
             super().__init__(pos, game.get_game().graphics['entity_sandstorm'], SandStormAI, hp_sys=hp_sys)
@@ -1089,6 +1277,9 @@ class Entities:
             IndividualLoot('magic_stone', 0.3, 20, 30),
             IndividualLoot('mysterious_substance', 0.8, 10, 12),
         ])
+
+        SOUND_HURT = 'metal'
+        SOUND_DEATH = 'explosive'
 
         def is_suitable(self, biome: str):
             return biome in ['desert']
@@ -1167,14 +1358,15 @@ class Entities:
         DISPLAY_MODE = 1
 
         def __init__(self, pos, rot):
-            super().__init__(pos, game.get_game().graphics['entity_spade_bullet'], FastBulletAI, 500000)
+            super().__init__(pos, game.get_game().graphics['entity_spade_bullet'], FastBulletAI, 50000000)
             self.obj.rot = rot
+            self.obj.speed = 240
 
         def update(self):
-            self.hp_sys.hp -= 2000
+            self.hp_sys.hp -= 200000
             super().update()
             self.damage()
-            self.set_rotation(180 - self.rot)
+            self.set_rotation(90 - self.obj.rot)
 
         def damage(self):
             if vector.distance(self.obj.pos[0] - game.get_game().player.obj.pos[0],
@@ -1188,15 +1380,15 @@ class Entities:
         DISPLAY_MODE = 1
 
         def __init__(self, pos, rot):
-            super().__init__(pos, game.get_game().graphics['entity_almond_bullet'], FastBulletAI, 500000)
+            super().__init__(pos, game.get_game().graphics['entity_almond_bullet'], FastBulletAI, 50000000)
             self.obj.rot = rot
-            self.obj.speed = 1200
+            self.obj.speed = 500
 
         def update(self):
-            self.hp_sys.hp -= 2000
+            self.hp_sys.hp -= 200000
             super().update()
             self.damage()
-            self.set_rotation(180 - self.rot)
+            self.set_rotation(90 - self.obj.rot)
 
         def damage(self):
             if vector.distance(self.obj.pos[0] - game.get_game().player.obj.pos[0],
@@ -1204,6 +1396,80 @@ class Entities:
                 game.get_game().player.hp_sys.damage(210, damages.DamageTypes.MAGICAL)
                 game.get_game().player.hp_sys.enable_immume()
                 self.hp_sys.hp = 0
+
+    class BombBullet(Entity):
+        NAME = 'Bomb Bullet'
+        DISPLAY_MODE = 1
+
+        def __init__(self, pos, rot, mode, spd, r=1):
+            super().__init__(pos, game.get_game().graphics[f'entity_{mode}_bomb_bullet'], FastBulletAI, 50000000)
+            self.obj.rot = rot
+            self.obj.speed = spd
+            self.mode = mode
+            self.r = r
+            self.rt = 0
+            self.buls = []
+            if self.mode == 'heart' and self.r:
+                self.buls = [Entities.BombBullet((0, 0), rot, 'heart', 0, 0) for _ in range(4)]
+                for b in self.buls:
+                    game.get_game().entities.append(b)
+                self.img = game.get_game().graphics[f'entity_null']
+                self.d_img = game.get_game().graphics[f'entity_null']
+
+        def update(self):
+            self.hp_sys.hp -= 200000
+            super().update()
+            self.damage()
+            self.set_rotation(90 - self.obj.rot)
+            if self.r and self.mode == 'heart':
+                self.rt += 5
+                for i in range(4):
+                    rr = self.rt + i * 90
+                    ax, ay = vector.rotation_coordinate(rr)
+                    self.buls[i].obj.pos = (self.obj.pos[0] + ax * 100, self.obj.pos[1] + ay * 100)
+
+
+        def damage(self):
+            if self.mode == 'heart' and not self.r:
+                return
+            if vector.distance(self.obj.pos[0] - game.get_game().player.obj.pos[0],
+                               self.obj.pos[1] - game.get_game().player.obj.pos[1]) < 50:
+                game.get_game().player.hp_sys.damage(225, damages.DamageTypes.MAGICAL)
+                game.get_game().player.hp_sys.enable_immume()
+                self.hp_sys.hp = 0
+
+    class CardBomb(Entity):
+        NAME = 'Card Bomb'
+        DISPLAY_MODE = 1
+
+        SOUND_DEATH = 'card_bomb'
+
+        def __init__(self, pos, mode):
+            super().__init__(pos, game.get_game().graphics[f'entity_{mode}_bomb'], CardBombAI, 300000000)
+            self.obj.rot = 0
+            self.mode = mode
+
+        def update(self):
+            self.obj.pos = (self.obj.pos[0], self.obj.pos[1] + 75)
+            self.hp_sys.hp -= 75 * 10 ** 5
+            super().update()
+            if self.hp_sys.hp <= 0:
+                self.hp_sys.hp = 0
+                px, py = (game.get_game().player.obj.pos[0] - self.obj.pos[0],
+                          game.get_game().player.obj.pos[1] - self.obj.pos[1])
+                rot = vector.coordinate_rotation(px, py)
+                if self.mode == 'heart':
+                    game.get_game().entities.append(Entities.BombBullet(self.obj.pos, rot, 'heart', 120, 1))
+                elif self.mode == 'spade':
+                    sr = random.randint(0, 18)
+                    for i in range(sr, sr + 360, 18):
+                        game.get_game().entities.append(Entities.BombBullet(self.obj.pos, i, 'spade', 200, 1))
+                elif self.mode == 'diamond':
+                    for i in range(120, 360, 80):
+                        game.get_game().entities.append(Entities.BombBullet(self.obj.pos, rot, 'diamond', i, 1))
+                elif self.mode == 'club':
+                    for i in range(-60, 61, 30):
+                        game.get_game().entities.append(Entities.BombBullet(self.obj.pos, rot + i, 'club', 300, 1))
 
     class Time(Entity):
         NAME = 'Time'
@@ -1255,6 +1521,8 @@ class Entities:
         NAME = 'Lazer'
         DISPLAY_MODE = 1
 
+        SOUND_SPAWN = 'lazer'
+
         def __init__(self, pos, rot):
             super().__init__(pos, game.get_game().graphics['entity_lazer'], AbyssRuneShootAI, 500000)
             self.obj.rot = rot
@@ -1299,8 +1567,13 @@ class Entities:
         LOOT_TABLE = LootTable([
             IndividualLoot('soul', 1, 100, 200),
             SelectionLoot([('spiritual_stabber', 1, 1), ('spiritual_piercer', 1, 1), ('spiritual_destroyer', 1, 1)], 1,
-                          2)
+                          2),
+            IndividualLoot('tip5', 1, 1, 1),
         ])
+
+        SOUND_SPAWN = 'boss'
+        SOUND_HURT = 'corrupt'
+        SOUND_DEATH = 'huge_monster'
 
         def is_suitable(self, biome: str):
             return biome in ['heaven']
@@ -1363,7 +1636,10 @@ class Entities:
         LOOT_TABLE = LootTable([
             IndividualLoot('soul', 0.9, 6, 7),
             IndividualLoot('evil_ingot', 1, 10, 12),
+            SelectionLoot([('tip61', 1, 1), ('tip62', 1, 1), ('tip63', 1, 1)], 1, 1),
         ])
+
+        SOUND_HURT = 'corrupt'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_evil_mark'], BuildingAI, 4800)
@@ -1395,8 +1671,48 @@ class Entities:
             IndividualLoot('evil_ingot', 0.9, 2, 5),
         ])
 
+        SOUND_HURT = 'sticky'
+        SOUND_DEATH = 'sticky'
+
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_cells'], CellsAI, 28500)
+
+    class SnowDrake(Entity):
+        NAME = 'Snow Drake'
+        DISPLAY_MODE = 3
+        LOOT_TABLE = LootTable([
+            IndividualLoot('soul_of_coldness', 0.9, 5, 12),
+            IndividualLoot('evil_ingot', 0.9, 2, 5),
+        ])
+
+        SOUND_HURT = 'sticky'
+        SOUND_DEATH = 'monster'
+
+        def __init__(self, pos):
+            super().__init__(pos, game.get_game().graphics['entity_snowdrake'], SnowDrakeAI, 25600)
+            self.hp_sys.defenses[damages.DamageTypes.PHYSICAL] = 100
+            self.hp_sys.defenses[damages.DamageTypes.MAGICAL] = 150
+            self.hp_sys.defenses[damages.DamageTypes.PIERCING] = 180
+
+    class IceCap(Entity):
+        NAME = 'Ice Cap'
+        DISPLAY_MODE = 2
+        LOOT_TABLE = LootTable([
+            IndividualLoot('soul_of_coldness', 0.9, 5, 12),
+            IndividualLoot('evil_ingot', 0.9, 2, 5),
+        ])
+
+        SOUND_HURT = 'metal'
+        SOUND_DEATH = 'monster'
+
+        def __init__(self, pos):
+            super().__init__(pos, game.get_game().graphics['entity_ice_cap'], IceCapAI, 12800)
+            self.hp_sys.defenses[damages.DamageTypes.PHYSICAL] = 20
+            self.hp_sys.defenses[damages.DamageTypes.MAGICAL] = 20
+            self.hp_sys.defenses[damages.DamageTypes.PIERCING] = 80
+            self.hp_sys.resistances[damages.DamageTypes.PHYSICAL] = .2
+            self.hp_sys.resistances[damages.DamageTypes.MAGICAL] = .2
+            self.hp_sys.resistances[damages.DamageTypes.PIERCING] = .2
 
     class MechanicEye(Entity):
         NAME = 'Mechanic Eye'
@@ -1405,6 +1721,9 @@ class Entities:
             IndividualLoot('evil_ingot', 0.9, 5, 8),
             SelectionLoot([('palladium', 20, 30), ('mithrill', 20, 30), ('titanium', 20, 30)], 0, 1)
         ])
+
+        SOUND_HURT = 'metal'
+        SOUND_DEATH = 'explosive'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_mechanic_eye'], MechanicEyeAI, 4800)
@@ -1423,7 +1742,13 @@ class Entities:
         LOOT_TABLE = LootTable([
             SelectionLoot([('palladium', 20, 30), ('mithrill', 20, 30), ('titanium', 20, 30)], 1, 3),
             IndividualLoot('soul_of_integrity', 1, 10, 22),
+            IndividualLoot('double_watcher_wand', 0.5, 1, 1),
+            IndividualLoot('tip71', 1, 1, 1),
         ])
+
+        SOUND_SPAWN = 'boss'
+        SOUND_HURT = 'metal'
+        SOUND_DEATH = 'explosive'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_faithless_eye'], FaithlessEyeAI, 124000)
@@ -1461,7 +1786,13 @@ class Entities:
         LOOT_TABLE = LootTable([
             SelectionLoot([('palladium', 20, 30), ('mithrill', 20, 30), ('titanium', 20, 30)], 1, 3),
             IndividualLoot('soul_of_integrity', 1, 10, 22),
+            IndividualLoot('double_watcher_wand', 0.5, 1, 1),
+            IndividualLoot('tip71', 1, 1, 1),
         ])
+
+        SOUND_SPAWN = 'boss'
+        SOUND_HURT = 'metal'
+        SOUND_DEATH = 'explosive'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_truthless_eye'], FaithlessEyeAI, 138000)
@@ -1502,7 +1833,12 @@ class Entities:
         LOOT_TABLE = LootTable([
             SelectionLoot([('palladium', 20, 30), ('mithrill', 20, 30), ('titanium', 20, 30)], 1, 3),
             IndividualLoot('soul_of_bravery', 1, 10, 22),
+            IndividualLoot('tip73', 1, 1, 1),
         ])
+
+        SOUND_SPAWN = 'boss'
+        SOUND_HURT = 'metal'
+        SOUND_DEATH = 'explosive'
 
         def __init__(self, pos):
             super().__init__(pos, 54, game.get_game().graphics['entity_destroyer_head'],
@@ -1528,7 +1864,13 @@ class Entities:
         LOOT_TABLE = LootTable([
             SelectionLoot([('palladium', 20, 30), ('mithrill', 20, 30), ('titanium', 20, 30)], 1, 3),
             IndividualLoot('soul_of_kindness', 1, 10, 22),
+            IndividualLoot('remote_sword', 0.8, 1, 1),
+            IndividualLoot('tip72', 1, 1, 1),
         ])
+
+        SOUND_SPAWN = 'boss'
+        SOUND_HURT = 'metal'
+        SOUND_DEATH = 'explosive'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_the_cpu'], TheCPUAI, 440000)
@@ -1575,7 +1917,11 @@ class Entities:
             SelectionLoot([('palladium', 20, 30), ('mithrill', 20, 30), ('titanium', 20, 30)], 1, 3),
             IndividualLoot('saint_steel_ingot', 1, 5, 8),
             IndividualLoot('soul_of_perseverance', 1, 10, 22),
+            SelectionLoot([('tip8', 1, 1), ('tip9', 1, 1)], 0, 2),
         ])
+
+        SOUND_HURT = 'corrupt'
+        SOUND_DEATH = 'explosive'
 
         def __init__(self, pos, d=False):
             super().__init__(pos, game.get_game().graphics['entity_greed'], GreedAI, 1800000)
@@ -1616,7 +1962,11 @@ class Entities:
             SelectionLoot([('palladium', 2, 3), ('mithrill', 2, 3), ('titanium', 2, 3)], 1, 3),
             IndividualLoot('dark_ingot', 1, 5, 8),
             IndividualLoot('soul_of_patience', 1, 1, 2),
+            IndividualLoot('tip8', 0.1, 1, 1),
+            IndividualLoot('tip9', 0.1, 1, 1),
         ])
+
+        SOUND_DEATH = 'huge_monster'
 
         def __init__(self, pos, d: int = False, _hp_sys=None, idx: float = 0):
             _p = pos
@@ -1685,7 +2035,11 @@ class Entities:
             SelectionLoot([('palladium', 20, 30), ('mithrill', 20, 30), ('titanium', 20, 30)], 1, 3),
             IndividualLoot('daedalus_ingot', 1, 5, 8),
             IndividualLoot('soul_of_justice', 1, 10, 22),
+            SelectionLoot([('tip8', 1, 1), ('tip9', 1, 1)], 0, 2),
         ])
+
+        SOUND_HURT = 'corrupt'
+        SOUND_DEATH = 'explosive'
 
         def __init__(self, pos):
             super().__init__(pos, 60, game.get_game().graphics['entity_devil_python_head'],
@@ -1709,6 +2063,8 @@ class Entities:
             IndividualLoot('soul_of_growth', 1, 5, 10),
             IndividualLoot('chlorophyll', 0.03, 1, 1)
         ])
+
+        SOUND_DEATH = 'monster'
 
         def __init__(self, pos):
             super().__init__(pos, game.get_game().graphics['entity_leaf'], LeafAI, 48000)
@@ -1735,35 +2091,69 @@ class Entities:
         NAME = 'Joker Evil'
         DISPLAY_MODE = 2
         LOOT_TABLE = LootTable([
+            IndividualLoot('chaos_ingot', 1, 50, 60),
+            IndividualLoot('jevil_knife', 1, 1, 1),
             ])
         IS_MENACE = True
 
+        SOUND_HURT = 'haha'
+        SOUND_DEATH = 'haha'
+
         def __init__(self, pos):
-            super().__init__(pos, game.get_game().graphics['entity_jevil'], JevilAI, 4400000)
-            self.hp_sys.defenses[damages.DamageTypes.PHYSICAL] = 200
-            self.hp_sys.defenses[damages.DamageTypes.MAGICAL] = 400
-            self.hp_sys.defenses[damages.DamageTypes.ARCANE] = 100
-            self.hp_sys.defenses[damages.DamageTypes.PIERCING] = 1600
+            super().__init__(pos, game.get_game().graphics['entity_jevil'], JevilAI, 88000000)
+            self.hp_sys.defenses[damages.DamageTypes.PHYSICAL] = 2000
+            self.hp_sys.defenses[damages.DamageTypes.MAGICAL] = 18000
+            self.hp_sys.defenses[damages.DamageTypes.ARCANE] = 6000
+            self.hp_sys.defenses[damages.DamageTypes.PIERCING] = 16000
+            self.hp_sys.resistances[damages.DamageTypes.PHYSICAL] = 4.5
+            self.hp_sys.resistances[damages.DamageTypes.PIERCING] = 0.5
+            self.hp_sys.resistances[damages.DamageTypes.MAGICAL] = 0.3
+            self.hp_sys.resistances[damages.DamageTypes.ARCANE] *= 0.5
             self.phase = 0
 
         def update(self):
-            if self.hp_sys.hp < self.hp_sys.max_hp * 0.6 and self.phase == 0:
+            self.hp_sys.SOUND_HURT = self.SOUND_HURT if not random.randint(0, 10) else None
+            if self.hp_sys.hp < self.hp_sys.max_hp * 0.9 and self.phase == 0:
                 self.phase = 1
+                self.play_sound('i_can_do_anything')
+            if self.hp_sys.hp < self.hp_sys.max_hp * 0.7 and self.phase == 1:
+                self.phase = 2
+                self.play_sound('devil_knife')
                 for i in range(0, 360, 90):
                     kf = Entities.JevilKnife(self.obj.pos, self.hp_sys)
+                    kf.obj.upper = self.obj
                     kf.obj.r = i
                     game.get_game().entities.append(kf)
             super().update()
+            if self.hp_sys.hp < self.hp_sys.max_hp * 0.5 and self.phase == 2:
+                self.phase = 3
+                self.img = game.get_game().graphics['entity_null']
+                self.play_sound('neo_chaos')
             r = -vector.coordinate_rotation(self.obj.pos[0] - game.get_game().player.obj.pos[0],
                                                           self.obj.pos[1] - game.get_game().player.obj.pos[1])
             self.set_rotation(r)
-            if self.obj.state == 0 and self.obj.tick % 60 <= 1:
-                for r in range(-30, 31, 15):
-                    bul = Entities.SpadeBullet(self.obj.pos, r - self.rot + 180)
+            if self.phase <= 1:
+                if self.obj.state in [0, 4] and self.obj.tick % 60 <= 1:
+                    for r in range(-30, 31, 15 - 5 * self.phase):
+                        bul = Entities.SpadeBullet(self.obj.pos, r - self.rot + 180)
+                        game.get_game().entities.append(bul)
+                elif self.obj.state in [2, 6] and self.obj.tick % 20 <= 1:
+                    for r in range(-20 + 20 * (self.obj.tick % 40 < 20), 21, 40):
+                        bul = Entities.AlmondBullet(self.obj.pos, r - self.rot + 180)
+                        if self.phase:
+                            bul.obj.speed = 800
+                        game.get_game().entities.append(bul)
+            elif self.phase == 2:
+                if self.obj.state % 2 == 0 and self.obj.tick % 18 <= 1:
+                    md = ['heart', 'club', 'spade', 'diamond'][self.obj.state // 2]
+                    px, py = game.get_game().player.obj.pos
+                    bul = Entities.CardBomb((px + random.randint(-1500, 1500), py + random.randint(-2500, -1000)), md)
                     game.get_game().entities.append(bul)
-            elif self.obj.state == 2 and self.obj.tick % 20 <= 1:
-                for r in range(-20 + 20 * (self.obj.tick % 40 < 20), 21, 40):
-                    bul = Entities.AlmondBullet(self.obj.pos, r - self.rot + 180)
+            else:
+                if self.obj.tick % 15 <= 1:
+                    md = random.choice(['heart', 'club', 'spade', 'diamond'])
+                    px, py = game.get_game().player.obj.pos
+                    bul = Entities.CardBomb((px + random.randint(-1500, 1500), py + random.randint(-2500, -1000)), md)
                     game.get_game().entities.append(bul)
 
 

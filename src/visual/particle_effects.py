@@ -28,7 +28,7 @@ class Particle(effects.Effect):
         return True
 
 
-def particle_effects(x, y, n=15, r=10, col=(255, 0, 0), sp=6, t=10, g=0.6):
+def p_particle_effects(x, y, n=15, r=10, col=(255, 0, 0), sp=6, t=10, g=0.6):
     particles = []
     for i in range(n):
         angle = i * 2 * math.pi / n

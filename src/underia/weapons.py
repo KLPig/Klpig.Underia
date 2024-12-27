@@ -6,7 +6,7 @@ import pygame as pg
 from src import constants
 from src.physics import vector
 from src.resources import position
-from src.underia import game, projectiles, inventory
+from src.underia import game, projectiles, inventory, entity
 from src.values import damages as dmg
 from src.values import effects
 from src.visual import effects as eff
@@ -57,7 +57,7 @@ class Weapon:
 
     def set_rotation(self, angle: int):
         self.img = game.get_game().graphics[self.img_index]
-        self.d_img = pg.transform.rotate(self.img, 90 - angle)
+        self.d_img = pg.transform.rotate(pg.transform.scale_by(self.img, 1 / game.get_game().player.get_screen_scale()), 90 - angle)
         self.rot = angle
 
     def face_to(self, x: int, y: int):
@@ -66,6 +66,9 @@ class Weapon:
 
     def on_end_attack(self):
         self.display = False
+
+    def on_idle(self):
+        pass
 
     def update(self):
         if self.display:
@@ -81,6 +84,9 @@ class Weapon:
             self.on_end_attack()
             self.timer = 0
             self.cool = self.cd
+            self.on_idle()
+        else:
+            self.on_idle()
         if not self.timer:
             if self.cool:
                 self.cool -= 1
@@ -142,6 +148,16 @@ class SweepWeapon(Weapon):
                         e.obj.apply_force(vector.Vector(r, self.knock_back * 120000 / e.obj.MASS))
                     e.hp_sys.enable_immume()
 
+class RemoteWeapon(SweepWeapon):
+    def update(self):
+        mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+        px, py = game.get_game().player.obj.pos
+        self.x = (mx - px + self.x) // 2
+        self.y = (my - py + self.y) // 2
+        if not self.timer:
+            self.face_to(mx - px, my - py)
+        self.display = True
+        super().update()
 
 class Spear(Weapon):
     def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int, forward_speed: int,
@@ -183,6 +199,17 @@ class Spear(Weapon):
                     if not e.hp_sys.is_immune:
                         e.obj.apply_force(vector.Vector(r, self.knock_back * 120000 / e.obj.MASS))
                     e.hp_sys.enable_immume()
+
+class SwiftSword(Spear):
+    def update(self):
+        super().update()
+        if not self.timer and not self.cool:
+            if pg.K_q in game.get_game().get_keys() and game.get_game().player.mana >= 20:
+                mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+                px, py = game.get_game().player.obj.pos
+                game.get_game().player.obj.apply_force(vector.Vector(vector.coordinate_rotation(mx - px, my - py), 3600))
+                game.get_game().player.mana -= 20
+                self.attack()
 
 
 class ComplexWeapon(SweepWeapon):
@@ -241,6 +268,20 @@ class Blade(AutoSweepWeapon):
         self.rotate(abs(self.st_pos) * r)
         self.rot_speed = abs(self.rot_speed) * -r
 
+class LifeWoodenSword(Blade):
+    def on_start_attack(self):
+        super().on_start_attack()
+        mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+        px, py = game.get_game().player.obj.pos
+        game.get_game().projectiles.append(projectiles.Projectiles.LifeWoodenSword(game.get_game().player.obj.pos,
+                                                                                   vector.coordinate_rotation(mx - px, my - py)))
+
+class BloodPike(Spear):
+    def on_start_attack(self):
+        super().on_start_attack()
+        mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+        px, py = game.get_game().player.obj.pos
+        game.get_game().player.obj.apply_force(vector.Vector(vector.coordinate_rotation(mx - px, my - py), 480))
 
 class PerseveranceSword(Blade):
     def damage(self):
@@ -293,6 +334,10 @@ class Volcano(Blade):
             if vector.distance(px - game.get_game().player.obj.pos[0], py - game.get_game().player.obj.pos[1]) < 300:
                 e.hp_sys.effect(effects.Burning(5, 15))
 
+class JevilKnife(Blade):
+    def on_attack(self):
+        self.rotate(-int((self.timer - self.at_time / 2) * 10))
+        super().on_attack()
 
 class NightsEdge(Blade):
     def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int, rot_speed: int,
@@ -345,7 +390,7 @@ class NightsEdge(Blade):
                 self.rots.pop(0)
         for j in range(40):
             i = j / 10
-            d = 130 - i * 23
+            d = (130 - i * 23) / game.get_game().player.get_screen_scale()
             eff.pointed_curve((100 + int(i * 30), int(i * 25), 100 + int(i * 12)),
                               [(vx * d + game.get_game().player.obj.pos[0], vy * d + game.get_game().player.obj.pos[1])
                                for vx, vy in self.rots[:-2]], 3, salpha=int(120 - i * 30))
@@ -376,7 +421,7 @@ class SpiritualStabber(Blade):
                 self.rots.pop(0)
         for j in range(64):
             i = j / 10
-            d = 200 - i * 23
+            d = (200 - i * 23) / game.get_game().player.get_screen_scale()
             eff.pointed_curve((100 + int(i * 12), 200, 200),
                               [(vx * d + game.get_game().player.obj.pos[0], vy * d + game.get_game().player.obj.pos[1])
                                for vx, vy in self.rots[:-3]], 3, salpha=int(120 - i * 15))
@@ -407,7 +452,7 @@ class BalancedStabber(Blade):
                 self.rots.pop(0)
         for j in range(64):
             i = j / 10
-            d = 200 - i * 23
+            d = (200 - i * 23) / game.get_game().player.get_screen_scale()
             eff.pointed_curve((50 + int(i * 10), int(i * 30), 50 + int(i * 20)),
                               [(vx * d + game.get_game().player.obj.pos[0], vy * d + game.get_game().player.obj.pos[1])
                                for vx, vy in self.rots[:-3]], 3, salpha=int(120 - i * 15))
@@ -454,7 +499,7 @@ class Excalibur(Blade):
 
         for j in range(80):
             i = j / 10
-            d = 260 - i * 23
+            d = (260 - i * 23) / game.get_game().player.get_screen_scale()
             eff.pointed_curve((255, 200 + int(i * 5), 127 + int(i * 10)),
                               [(vx * d + game.get_game().player.obj.pos[0], vy * d + game.get_game().player.obj.pos[1])
                                for vx, vy in self.rots[:-2]], 3, salpha=int(120 - i * 15))
@@ -501,7 +546,7 @@ class TrueExcalibur(Blade):
 
         for j in range(80):
             i = j / 10
-            d = 260 - i * 23
+            d = (260 - i * 23) / game.get_game().player.get_screen_scale()
             eff.pointed_curve((255, 200 + int(i * 5), 127 + int(i * 10)),
                               [(vx * d + game.get_game().player.obj.pos[0], vy * d + game.get_game().player.obj.pos[1])
                                for vx, vy in self.rots[:-2]], 3, salpha=int(120 - i * 15))
@@ -563,6 +608,103 @@ class TrueNightsEdge(Blade):
                                for vx, vy in self.rots[:-2]], 3, salpha=int(120 - i * 15))
             self.lrot = self.rot
 
+class TheBlade(Blade):
+    def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int, rot_speed: int,
+                 st_pos: int, double_sided: bool = False):
+        super().__init__(name, damages, kb, img, speed, at_time, rot_speed, st_pos, double_sided)
+        self.ppos = [[] for _ in range(80)]
+        self.wt = 0
+        self.at_r = 0
+
+    def on_start_attack(self):
+        self.at_r = (self.at_r + 1) % 16
+        self.wt = 0
+        super().on_start_attack()
+
+    def update(self):
+        self.display = True
+        for j in range(80):
+            i = j / 10
+            d = 260 - i * 23
+            ax, ay = vector.rotation_coordinate(self.rot)
+            self.ppos[j].append((ax * d + game.get_game().player.obj.pos[0] + self.x,
+                                 ay * d + game.get_game().player.obj.pos[1] + self.y))
+            if len(self.ppos[j]) > 6:
+                self.ppos[j].pop(0)
+            eff.pointed_curve((int(i * 25), 80 + int(i * 20), int(i * 25)), self.ppos[j], 3,
+                              salpha=int(120 - i * 15))
+        super().update()
+
+    def on_idle(self):
+        mx, my = position.relative_position(position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos())))
+        rot = vector.coordinate_rotation(mx, my)
+        rot = (360 + rot % 360) % 360
+        if rot > 270:
+            rot = 180 - rot
+        if rot < 90:
+            rot = 180 - rot
+        rot = 360 - rot
+        self.set_rotation((self.rot + rot) // 2)
+        self.x //= 2
+        self.y //= 2
+        super().on_idle()
+
+    def on_attack(self):
+        mx, my = position.relative_position(position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos())))
+        if self.at_r > 13:
+            self.x //= 3
+            self.y //= 3
+            self.rotate(int(-(self.timer - self.at_time / 2) * -32))
+        elif self.at_r % 4 < 2:
+            self.x //= 2
+            self.y //= 2
+            self.rotate(int(-(self.timer - self.at_time / 2) * -16))
+        else:
+            self.x = (self.x + mx) // 2
+            self.y = (self.y + my) // 2
+        if 4 <= self.wt and self.at_r % 4 > 1 and self.at_r <= 13:
+            if self.wt % 2 == 0:
+                for _ in range(self.wt // 3 + 1):
+                    game.get_game().projectiles.append(
+                        projectiles.Projectiles.BladeBeamSmall((self.x + game.get_game().player.obj.pos[0],
+                                                                self.y + game.get_game().player.obj.pos[1]),
+                                                               random.randint(0, 360)))
+        if self.wt == 4:
+            rot = vector.coordinate_rotation(mx, my)
+            if self.at_r == 13:
+                for r in range(-30, 31, 15):
+                    game.get_game().projectiles.append(
+                        projectiles.Projectiles.BladeBeam((self.x + game.get_game().player.obj.pos[0],
+                                                            self.y + game.get_game().player.obj.pos[1]),
+                                                           rot + r))
+            elif self.at_r == 15:
+                for r in range(-180, 181, 18):
+                    game.get_game().projectiles.append(
+                        projectiles.Projectiles.BladeBeam((self.x + game.get_game().player.obj.pos[0],
+                                                            self.y + game.get_game().player.obj.pos[1]),
+                                                           rot + r))
+            elif self.at_r > 13:
+                pass
+            elif self.at_r % 4 == 0:
+                game.get_game().projectiles.append(
+                    projectiles.Projectiles.BladeBeam((self.x + game.get_game().player.obj.pos[0],
+                                                        self.y + game.get_game().player.obj.pos[1]),
+                                                       rot))
+            elif self.at_r % 4 == 1:
+                game.get_game().projectiles.append(
+                    projectiles.Projectiles.BladeBeam((self.x + game.get_game().player.obj.pos[0],
+                                                        self.y + game.get_game().player.obj.pos[1]),
+                                                       rot - 10))
+                game.get_game().projectiles.append(
+                    projectiles.Projectiles.BladeBeam((self.x + game.get_game().player.obj.pos[0],
+                                                        self.y + game.get_game().player.obj.pos[1]),
+                                                       rot))
+                game.get_game().projectiles.append(
+                    projectiles.Projectiles.BladeBeam((self.x + game.get_game().player.obj.pos[0],
+                                                        self.y + game.get_game().player.obj.pos[1]),
+                                                       rot + 10))
+        self.wt += 1
+        super().on_attack()
 
 class LifeDevourer(Blade):
     def update(self):
@@ -617,6 +759,88 @@ class MagicWeapon(Weapon):
                             self.rot))
         game.get_game().player.mana -= self.mana_cost
 
+class TargetDummy(MagicWeapon):
+    def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int,
+                 projectile: type(projectiles.Projectiles.Projectile), mana_cost: int, auto_fire: bool = False, spell_name = ''):
+        super().__init__(name, damages, kb, img, speed, at_time, projectile, mana_cost, auto_fire, spell_name)
+        self.dm = None
+
+    def on_start_attack(self):
+        if game.get_game().player.mana < self.mana_cost:
+            self.timer = 0
+            return
+        self.face_to(
+            *position.relative_position(position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))))
+        game.get_game().player.mana -= self.mana_cost
+
+    def on_attack(self):
+        if self.dm is None:
+            self.dm = entity.Entities.Dummy((0, 0))
+        self.dm.obj.pos = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+        self.dm.update()
+        if self.dm.obj not in game.get_game().p_obj:
+            game.get_game().p_obj.append(self.dm.obj)
+
+    def on_end_attack(self):
+        if self.dm.obj in game.get_game().p_obj:
+            game.get_game().p_obj.remove(self.dm.obj)
+
+class Teleporter(MagicWeapon):
+    def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int,
+                 teleport_range: int, mana_cost: int, auto_fire: bool = False, spell_name = ''):
+        super().__init__(name, damages, kb, img, speed, at_time, projectiles.Projectiles.Projectile, mana_cost, auto_fire, spell_name)
+        self.teleport_range = teleport_range
+
+    def on_start_attack(self):
+        mx, my = position.relative_position(position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos())))
+        if vector.distance(mx, my) > self.teleport_range:
+            self.timer = 0
+            return
+        if game.get_game().player.mana < self.mana_cost:
+            self.timer = 0
+            return
+        game.get_game().player.mana -= self.mana_cost
+        game.get_game().player.obj.pos = (game.get_game().player.obj.pos[0] + mx, game.get_game().player.obj.pos[1] + my)
+
+class ChaosKiller(MagicWeapon):
+    def on_start_attack(self):
+        if game.get_game().player.mana < self.mana_cost:
+            self.timer = 0
+            return
+        game.get_game().player.mana -= self.mana_cost
+        els = [e for e in game.get_game().entities if e.obj.IS_OBJECT]
+        els.extend([e for e in game.get_game().entities if e.IS_MENACE])
+        el = len(els)
+        for e in els:
+            e.hp_sys.damage(self.damages[dmg.DamageTypes.MAGICAL] * game.get_game().player.attack *
+                            game.get_game().player.attacks[2] / el, dmg.DamageTypes.MAGICAL)
+
+class EvilMagicWeapon(MagicWeapon):
+    def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int,
+                 projectile: type(projectiles.Projectiles.Projectile), mana_cost: int, hp_cost: float,
+                 auto_fire: bool = False, spell_name = ''):
+        super().__init__(name, damages, kb, img, speed, at_time, projectile, mana_cost, auto_fire, spell_name)
+        self.hp_cost = hp_cost
+
+    def on_start_attack(self):
+        if game.get_game().player.mana < self.mana_cost or game.get_game().player.hp_sys.hp <= self.hp_cost:
+            self.timer = 0
+            return
+        game.get_game().player.hp_sys.hp -= self.hp_cost
+        super().on_start_attack()
+
+class Tornado(MagicWeapon):
+    def on_start_attack(self):
+        if game.get_game().player.mana >= self.mana_cost:
+            game.get_game().player.mana -= self.mana_cost
+            for e in game.get_game().entities:
+                ex = e.obj.pos[0] - game.get_game().player.obj.pos[0]
+                ey = e.obj.pos[1] - game.get_game().player.obj.pos[1]
+                e.obj.velocity.add(vector.Vector(vector.coordinate_rotation(ex, ey),
+                                                 1000000 / vector.distance(ex, ey) ** 2 * game.get_game().player.attack * game.get_game().player.attacks[2]))
+        else:
+            self.timer = 0
+
 class SweepMagicWeapon(SweepWeapon):
     def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int,
                  rot_speed: int, st_pos: int, double_sided: bool, mana_cost: int, auto_fire: bool = False, spell_name = ''):
@@ -645,6 +869,7 @@ class MagicSet(Weapon):
         self.style = style
         self.sz = 0
         self.tick = 0
+        self.sel = 0
 
     def update(self):
         self.tick += 1
@@ -679,25 +904,29 @@ class MagicSet(Weapon):
         self.weapons = [w for w in WEAPONS.values() if
                         self.element_feature(w) and w != self.name] #and
                         #w.name in game.get_game().player.inventory.items.keys()]
+        self.sel = min(self.sel, len(self.weapons) - 1)
+        if self.weapons[self.sel] is not self:
+            self.weapons[self.sel].update()
         if self.at_in is not None:
             if not self.at_in.cool and not self.at_in.timer:
                 self.at_in = None
             else:
-                self.at_in.update()
                 lv = [t for t in inventory.ITEMS[self.at_in.name.replace(' ', '_')].tags if t.name.startswith('magic_lv_')]
-                lvs = {'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5, 'vi': 6, 'vii': 7, 'xx': 8, 'xxv': 12}
+                lvs = {'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5, 'vi': 6, 'vii': 7, 'xx': 8, 'xxv': 12, 'nulla': 50}
                 sz = lvs[lv[0].value.removeprefix('LV.').lower()]
                 self.sz = (self.sz * 49 + sz ** 2 * 3) // 50
         if self.at_in is None:
             self.sz *= 8
             self.sz //= 9
             for i, w in enumerate(self.weapons):
-                if pg.key.key_code(self.PRESET_KEY_SET[i]) in game.get_game().pressed_keys:
+                if pg.key.key_code(self.PRESET_KEY_SET[i]) in game.get_game().pressed_keys or\
+                        (self.sel == i and pg.mouse.get_pressed()[0]):
+                    self.sel = i
                     self.at_in = w
                     w.re_init()
                     w.attack()
                     lv = [t for t in inventory.ITEMS[self.at_in.name.replace(' ', '_')].tags if t.name.startswith('magic_lv_')]
-                    lvs = {'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5, 'vi': 6, 'vii': 7, 'xx': 8, 'xxv': 12}
+                    lvs = {'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5, 'vi': 6, 'vii': 7, 'xx': 8, 'xxv': 12, 'nulla': 50}
                     sz = lvs[lv[0].value.removeprefix('LV.').lower()]
                     self.sz = (self.sz * 5 + sz ** 2 * 3) // 6
                     if sz == 12:
@@ -724,9 +953,188 @@ class ArcaneWeapon(MagicWeapon):
         if game.get_game().player.talent < self.talent_cost:
             self.timer = 0
             return
-        game.get_game().player.talent -= self.talent_cost
         super().on_start_attack()
+        if self.timer:
+            game.get_game().player.talent -= self.talent_cost
 
+class Domain(ArcaneWeapon):
+    def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int, mana_cost: int,
+                 talent_cost: float, domain_color: tuple[int, int, int], domain_size: int = 600,
+                 auto_fire: bool = False, spell_name = ''):
+        super().__init__(name, damages, kb, img, speed, at_time, projectiles.Projectiles.Projectile, mana_cost,
+                         talent_cost, auto_fire, spell_name)
+        self.domain_color = domain_color
+        self.domain_size = domain_size
+        self.domain_open = False
+        self.domain_tick = 0
+
+    def on_start_attack(self):
+        self.domain_open = not self.domain_open
+        self.domain_tick = 0
+        self.face_to(*position.relative_position(position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))))
+
+    def update(self):
+        self.domain_tick += 1
+        if self.domain_open:
+            if game.get_game().player.mana < self.mana_cost or game.get_game().player.talent < self.talent_cost:
+                self.domain_open = False
+                self.domain_tick = 0
+                return
+            game.get_game().player.mana -= self.mana_cost
+            game.get_game().player.talent -= self.talent_cost
+            pg.draw.circle(game.get_game().displayer.canvas, self.domain_color,
+                           position.displayed_position(game.get_game().player.obj.pos),
+                           min(self.domain_size, self.domain_tick ** 2 * 8) / game.get_game().player.get_screen_scale(),
+                           width=5)
+            game.get_game().player.obj.FRICTION = 0
+        elif self.domain_tick ** 2 * 8 <= self.domain_size:
+            pg.draw.circle(game.get_game().displayer.canvas, self.domain_color,
+                           position.displayed_position(game.get_game().player.obj.pos),
+                           max(0, self.domain_size -self.domain_tick ** 2 * 8) / game.get_game().player.get_screen_scale(),
+                           width=5)
+        super().update()
+
+class DomainWeapons(Weapon):
+    def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int,
+                 projectile: type(projectiles.Projectiles.Projectile), domain_name: str,
+                 auto_fire: bool = False, spell_name = ''):
+        super().__init__(name, damages, kb, img, speed, at_time, auto_fire)
+        self.domain_name = domain_name
+        self.spell_name = spell_name
+        self.mana_cost = 0
+        self.projectile = projectile
+
+    def on_start_attack(self):
+        mx, my = position.relative_position(position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos())))
+        if vector.distance(mx, my) <= WEAPONS[self.domain_name].domain_size and \
+            WEAPONS[self.domain_name].domain_open:
+            self.face_to(*position.relative_position(position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))))
+            super().on_start_attack()
+            game.get_game().player.hp_sys.heal(4)
+        else:
+            self.timer = 0
+            return
+
+    def update(self):
+        super().update()
+        WEAPONS[self.domain_name].update()
+
+class WdCirculateClockwise(DomainWeapons):
+    def on_start_attack(self):
+        super().on_start_attack()
+        if self.timer:
+            for e in game.get_game().entities:
+                ex = e.obj.pos[0] - game.get_game().player.obj.pos[0]
+                ey = e.obj.pos[1] - game.get_game().player.obj.pos[1]
+                if vector.distance(ex, ey) > WEAPONS[self.domain_name].domain_size:
+                    continue
+                mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+                ex = e.obj.pos[0] - mx
+                ey = e.obj.pos[1] - my
+                e.obj.velocity.add(vector.Vector(vector.coordinate_rotation(ex, ey) + 90,
+                                                 1000000 / vector.distance(ex, ey) ** 2 *
+                                                 game.get_game().player.attack * game.get_game().player.attacks[2]))
+
+class WdCirculateAntiClockwise(DomainWeapons):
+    def on_start_attack(self):
+        super().on_start_attack()
+        if self.timer:
+            for e in game.get_game().entities:
+                ex = e.obj.pos[0] - game.get_game().player.obj.pos[0]
+                ey = e.obj.pos[1] - game.get_game().player.obj.pos[1]
+                if vector.distance(ex, ey) > WEAPONS[self.domain_name].domain_size:
+                    continue
+                mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+                ex = e.obj.pos[0] - mx
+                ey = e.obj.pos[1] - my
+                e.obj.velocity.add(vector.Vector(vector.coordinate_rotation(ex, ey) - 90,
+                                                 1000000 / vector.distance(ex, ey) ** 2 *
+                                                 game.get_game().player.attack * game.get_game().player.attacks[2]))
+
+class WdCirculateAttract(DomainWeapons):
+    def on_start_attack(self):
+        super().on_start_attack()
+        if self.timer:
+            for e in game.get_game().entities:
+                ex = e.obj.pos[0] - game.get_game().player.obj.pos[0]
+                ey = e.obj.pos[1] - game.get_game().player.obj.pos[1]
+                if vector.distance(ex, ey) > WEAPONS[self.domain_name].domain_size:
+                    continue
+                mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+                ex = e.obj.pos[0] - mx
+                ey = e.obj.pos[1] - my
+                e.obj.velocity.add(vector.Vector(vector.coordinate_rotation(ex, ey) + 180,
+                                                 800000 / vector.distance(ex, ey) ** 2 *
+                                                 game.get_game().player.attack * game.get_game().player.attacks[2]))
+
+class WdCirculateRepel(DomainWeapons):
+    def on_start_attack(self):
+        super().on_start_attack()
+        if self.timer:
+            for e in game.get_game().entities:
+                ex = e.obj.pos[0] - game.get_game().player.obj.pos[0]
+                ey = e.obj.pos[1] - game.get_game().player.obj.pos[1]
+                if vector.distance(ex, ey) > WEAPONS[self.domain_name].domain_size:
+                    continue
+                mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+                ex = e.obj.pos[0] - mx
+                ey = e.obj.pos[1] - my
+                e.obj.velocity.add(vector.Vector(vector.coordinate_rotation(ex, ey),
+                                                 800000 / vector.distance(ex, ey) ** 2 *
+                                                 game.get_game().player.attack * game.get_game().player.attacks[2]))
+
+class WdStrongWind(DomainWeapons):
+    def on_start_attack(self):
+        super().on_start_attack()
+        if self.timer:
+            for e in game.get_game().entities:
+                ex = e.obj.pos[0] - game.get_game().player.obj.pos[0]
+                ey = e.obj.pos[1] - game.get_game().player.obj.pos[1]
+                if vector.distance(ex, ey) > WEAPONS[self.domain_name].domain_size:
+                    continue
+                mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+                ex = e.obj.pos[0] - mx
+                ey = e.obj.pos[1] - my
+                if vector.distance(ex, ey) < 100:
+                    e.hp_sys.damage(self.damages[dmg.DamageTypes.ARCANE] * game.get_game().player.attack *
+                                     game.get_game().player.attacks[2], dmg.DamageTypes.ARCANE)
+
+class WdExtinct(DomainWeapons):
+    def on_start_attack(self):
+        super().on_start_attack()
+        if self.timer:
+            for e in game.get_game().entities:
+                ex = e.obj.pos[0] - game.get_game().player.obj.pos[0]
+                ey = e.obj.pos[1] - game.get_game().player.obj.pos[1]
+                if vector.distance(ex, ey) > WEAPONS[self.domain_name].domain_size:
+                    continue
+                e.hp_sys.damage(self.damages[dmg.DamageTypes.ARCANE] * game.get_game().player.attack *
+                                 game.get_game().player.attacks[2], dmg.DamageTypes.ARCANE)
+
+class LdSpawn(DomainWeapons):
+    def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int,
+                 projectile: type(projectiles.Projectiles.Projectile), domain_name: str,
+                 auto_fire: bool = False, spell_name = '', spawn_entity: type(entity.Entities.Entity) = entity.Entities.Entity):
+        super().__init__(name, damages, kb, img, speed, at_time, projectile, domain_name, auto_fire, spell_name)
+        self.spawn_entity = spawn_entity
+
+    def on_start_attack(self):
+        super().on_start_attack()
+        if self.timer:
+            mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+            if vector.distance(mx - game.get_game().player.obj.pos[0],
+                               my - game.get_game().player.obj.pos[1]) <= WEAPONS[self.domain_name].domain_size and \
+                    WEAPONS[self.domain_name].domain_open:
+                self.face_to(*position.relative_position(position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))))
+                m: entity.Entities.Entity = self.spawn_entity((mx, my))
+                m.LOOT_TABLE = entity.LootTable([])
+                game.get_game().entities.append(m)
+
+class LdHeal(DomainWeapons):
+    def on_start_attack(self):
+        super().on_start_attack()
+        if self.timer:
+            game.get_game().player.hp_sys.heal(10)
 
 class ForbiddenCurseTime(ArcaneWeapon):
     def on_start_attack(self):
@@ -836,6 +1244,39 @@ class LifeWand(MagicWeapon):
         game.get_game().player.mana -= min(mana_avail // 2, hp_lft) * 2
         game.get_game().player.hp_sys.heal(min(mana_avail // 2, hp_lft))
 
+class AzureGuard(MagicWeapon):
+    def update(self):
+        super().update()
+        aw = [v for n, v in game.get_game().player.hp_sys.shields if n == 'azure_guard']
+        if len(aw):
+            v = aw[0]
+            pg.draw.circle(game.get_game().displayer.canvas, (int(255 - v * 2), int(255 - v * 2), 255),
+                           position.displayed_position(game.get_game().player.obj.pos),
+                           width=int(1 + v // 20), radius=240)
+
+    def on_start_attack(self):
+        if game.get_game().player.mana < self.mana_cost:
+            self.timer = 0
+            return
+        if len([v for n, v in game.get_game().player.hp_sys.shields if n == 'azure_guard']):
+            self.timer = 0
+            return
+        game.get_game().player.mana -= self.mana_cost
+        game.get_game().player.hp_sys.shields.append(('azure_guard', 100))
+
+class EarthWall(MagicWeapon):
+    def on_start_attack(self):
+        if game.get_game().player.mana < self.mana_cost:
+            self.timer = 0
+            return
+        game.get_game().player.mana -= self.mana_cost
+        e_w = 256
+        for ar in [15, 18, 20, 30]:
+            w = e_w / 2 / math.sin(math.radians(ar / 2))
+            for r in range(0, 360, ar):
+                ax, ay = vector.rotation_coordinate(r)
+                game.get_game().entities.append(entity.Entities.HugeTree((self.x + game.get_game().player.obj.pos[0] + ax * w,
+                                                                          self.y + game.get_game().player.obj.pos[1] + ay * w)))
 
 class Bow(Weapon):
     def __init__(self, name, damages: dict[int, float], kb: float, img, speed: int, at_time: int, projectile_speed: int,
@@ -1078,9 +1519,12 @@ def set_weapons():
         'platinum_sword': SweepWeapon('platinum sword', {dmg.DamageTypes.PHYSICAL: 64}, 0.6,
                                       'items_weapons_platinum_sword', 0,
                                       15, 16, 120),
-        'platinum_blade': Blade('platinum blade', {dmg.DamageTypes.PHYSICAL: 20}, 0.1,
+        'platinum_blade': Blade('platinum blade', {dmg.DamageTypes.PHYSICAL: 32}, 0.1,
                                 'items_weapons_platinum_blade', 10,
                                 12, 30, 180),
+        'life_wooden_sword': LifeWoodenSword('life wooden sword', {dmg.DamageTypes.PHYSICAL: 88}, 1.2,
+                                             'items_weapons_life_wooden_sword', 1,
+                                             5, 36, 110),
         'magic_sword': MagicSword('magic sword', {dmg.DamageTypes.PHYSICAL: 30}, 0.5,
                                   'items_weapons_magic_sword', 0,
                                   16, 12, 96),
@@ -1098,6 +1542,9 @@ def set_weapons():
         'nights_edge': NightsEdge('nights edge', {dmg.DamageTypes.PHYSICAL: 380, dmg.DamageTypes.MAGICAL: 140}, 0.6,
                                   'items_weapons_nights_edge',
                                   1, 18, 20, 100),
+        'storm_swift_sword': SwiftSword('storm swift sword', {dmg.DamageTypes.PHYSICAL: 240}, 0.8,
+                                               'items_weapons_storm_swift_sword',
+                                               0, 3, 100, 180, auto_fire=True),
         'spiritual_stabber': SpiritualStabber('spiritual stabber', {dmg.DamageTypes.PHYSICAL: 685}, 0.5,
                                               'items_weapons_spiritual_stabber',
                                               2, 6, 40, 170),
@@ -1113,6 +1560,9 @@ def set_weapons():
         'excalibur': Excalibur('excalibur', {dmg.DamageTypes.PHYSICAL: 1250, dmg.DamageTypes.MAGICAL: 450}, 0.8,
                                'items_weapons_excalibur',
                                1, 6, 59, 180),
+        'remote_sword': RemoteWeapon('remote sword', {dmg.DamageTypes.PHYSICAL: 1080}, 0.8,
+                                      'items_weapons_remote_sword',
+                                      1, 5, 72, 180, auto_fire=True),
         'true_excalibur': TrueExcalibur('true excalibur',
                                         {dmg.DamageTypes.PHYSICAL: 2020, dmg.DamageTypes.MAGICAL: 620}, 1,
                                         'items_weapons_true_excalibur',
@@ -1130,11 +1580,19 @@ def set_weapons():
         'life_devourer': LifeDevourer('life devourer', {dmg.DamageTypes.PHYSICAL: 3200, dmg.DamageTypes.MAGICAL: 12800},
                                       0.8, 'items_weapons_life_devourer',
                                       1, 5, 70, 150),
+        'jevil_knife': JevilKnife('jevil knife', {dmg.DamageTypes.PHYSICAL: 12800}, 0.5, 'items_weapons_jevil_knife',
+                                  2, 20, 30, 120),
+        'the_blade': TheBlade('the blade', {dmg.DamageTypes.PHYSICAL: 11400}, 7.2, 'items_weapons_the_blade',
+                              4, 8, 60, 180),
 
+        'spikeflower': Spear('spikeflower', {dmg.DamageTypes.PHYSICAL: 32}, 1.8, 'items_weapons_spikeflower',
+                             1, 3, 30, 60, auto_fire=True),
         'spear': Spear('spear', {dmg.DamageTypes.PHYSICAL: 28}, 0.5, 'items_weapons_spear',
                        2, 6, 15, 60, auto_fire=True),
         'platinum_spear': Spear('platinum spear', {dmg.DamageTypes.PHYSICAL: 50}, 0.6, 'items_weapons_platinum_spear',
                                 2, 4, 30, 80, auto_fire=True),
+        'blood_pike': BloodPike('blood pike', {dmg.DamageTypes.PHYSICAL: 96}, 5.4, 'items_weapons_blood_pike',
+                                1, 5, 50, 150, auto_fire=True),
         'firite_spear': Spear('firite spear', {dmg.DamageTypes.PHYSICAL: 150}, 0.7, 'items_weapons_firite_spear',
                               2, 10, 20, 100, auto_fire=True),
         'nights_pike': Spear('nights pike', {dmg.DamageTypes.PHYSICAL: 420}, 1.8, 'items_weapons_nights_pike',
@@ -1202,7 +1660,7 @@ def set_weapons():
         'iron_wand': MagicWeapon('iron wand', {dmg.DamageTypes.MAGICAL: 36}, 0.1,
                                  'items_weapons_iron_wand', 2,
                                  6, projectiles.Projectiles.IronWand, 4, spell_name='Iron Bomb'),
-        'cactus_wand': MagicWeapon('cactus wand', {dmg.DamageTypes.MAGICAL: 12}, 0.2,
+        'cactus_wand': MagicWeapon('cactus wand', {dmg.DamageTypes.MAGICAL: 8}, 0.2,
                                     'items_weapons_cactus_wand', 2,
                                     10, projectiles.Projectiles.CactusWand, 18, spell_name='Cactus Spawning'),
         'watcher_wand': MagicWeapon('watcher wand', {dmg.DamageTypes.MAGICAL: 32}, 0.2,
@@ -1214,7 +1672,7 @@ def set_weapons():
                                      'Energy Bomb'),
         'life_wooden_wand': MagicWeapon('life wooden wand', {dmg.DamageTypes.MAGICAL: 32}, 0.4,
                                         'items_weapons_life_wooden_wand', 1,
-                                        4, projectiles.Projectiles.LifeWoodenWand, 8, True,
+                                        4, projectiles.Projectiles.LifeWoodenWand, 18, True,
                                     'Earth\'s Lazer'),
         'burning_book': MagicWeapon('burning book', {dmg.DamageTypes.MAGICAL: 72}, 0.5,
                                     'items_weapons_burning_book', 5,
@@ -1224,7 +1682,8 @@ def set_weapons():
                                    'items_weapons_talent_book', 0,
                                    2, projectiles.Projectiles.TalentBook, 2, True,
                                    'Smart Ball'),
-        'hematology': Hematology('hematology', 'items_weapons_hematology', 2, 3, True),
+        'hematology': Hematology('hematology', 'items_weapons_hematology', 2, 3,
+                                 True),
         'blood_wand': MagicWeapon('blood wand', {dmg.DamageTypes.MAGICAL: 75}, 0.1,
                                   'items_weapons_blood_wand', 4,
                                   12, projectiles.Projectiles.BloodWand, 8, True,
@@ -1237,6 +1696,8 @@ def set_weapons():
                                  'items_weapons_rock_wand', 0,
                                  4, projectiles.Projectiles.RockWand, 3, True,
                                  'Rock Storm'),
+        'tornado': Tornado('tornado', {}, 0.1, 'items_weapons_tornado',
+                           2, 18, projectiles.Projectiles.Projectile, 25, spell_name='Tornado'),
         'midnights_wand': MidnightsWand('midnights wand', {dmg.DamageTypes.MAGICAL: 110}, 0.3,
                                         'items_weapons_midnights_wand', 2,
                                         12, projectiles.Projectiles.MidnightsWand, 4, True,
@@ -1245,6 +1706,14 @@ def set_weapons():
                                            'items_weapons_spiritual_destroyer', 1,
                                            5, projectiles.Projectiles.SpiritualDestroyer, 6,
                                            True, 'Energy Destroy'),
+        'blood_sacrifice': EvilMagicWeapon('blood sacrifice', {dmg.DamageTypes.MAGICAL: 456}, 0.5,
+                                            'items_weapons_blood_sacrifice', 3,
+                                            12, projectiles.Projectiles.BloodSacrifice, 20, 24, True,
+                                            spell_name='Blood Sacrifice'),
+        'blade_wand': MagicWeapon('blade wand', {dmg.DamageTypes.MAGICAL: 880}, 0.3,
+                                  'items_weapons_blade_wand', 1,
+                                  5, projectiles.Projectiles.WindBlade, 12, True,
+                                  'Wind Blade'),
         'evil_book': MagicWeapon('evil book', {dmg.DamageTypes.MAGICAL: 1550}, 0.8,
                                  'items_weapons_evil_book', 1,
                                  4, projectiles.Projectiles.EvilBook, 15, True,
@@ -1257,6 +1726,10 @@ def set_weapons():
                                     'items_weapons_gravity_wand', 80,
                                     10, projectiles.Projectiles.GravityWand, 160, True,
                                     'Gravity'),
+        'double_watcher_wand': MagicWeapon('double watcher wand', {dmg.DamageTypes.MAGICAL: 840}, 0.8,
+                                            'items_weapons_double_watcher_wand', 1,
+                                            4, projectiles.Projectiles.BeamPair, 12, True,
+                                            'Double Watch'),
         'shield_wand': MagicWeapon('shield wand', {dmg.DamageTypes.MAGICAL: 240}, 0.8,
                                    'items_weapons_shield_wand', 80,
                                    10, projectiles.Projectiles.ShieldWand, 100, True,
@@ -1296,6 +1769,96 @@ def set_weapons():
         'energy_bible': MagicSet('energy_bible', 'items_weapons_energy_bible',
                                  lambda w: (inventory.TAGS['magic_element_energy'] in inventory.ITEMS[w.name.replace(' ', '_')].tags),
                                  'Energy Pulse', 1),
+        'chaos_teleporter': Teleporter('chaos_teleporter', {}, 1, 'items_weapons_chaos_teleporter',
+                                       1, 19, 1000, 300, False, 'Chaos Teleport'),
+        'chaos_killer': ChaosKiller('chaos_killer', {dmg.DamageTypes.MAGICAL: 320000}, 1, 'items_weapons_chaos_killer',
+                                     1, 9, projectiles.Projectiles.Projectile, 40, False, 'Chaos Kill'),
+        'skyfire__meteor': MagicWeapon('skyfire__meteor', {dmg.DamageTypes.MAGICAL: 240000}, 1, 'items_weapons_skyfire__meteor',
+                                       0, 1, projectiles.Projectiles.Meteor, 8, True, 'Skyfire Meteor'),
+        'azure_guard': AzureGuard('azure_guard', {}, 1, 'items_weapons_azure_guard',
+                                  1, 24, projectiles.Projectiles.Projectile, 300, False, 'Azure Guard'),
+
+        'forbidden_curse__fire': ArcaneWeapon('forbidden curse  fire', {dmg.DamageTypes.ARCANE: 512}, 0.8,
+                                               'items_weapons_forbidden_curse__fire', 111,
+                                              89, projectiles.Projectiles.Seraph, 600, 4.5, True,
+                                               'The Fire Seraph'),
+        'storm': MagicWeapon('storm', {dmg.DamageTypes.MAGICAL: 60000}, 1, 'items_weapons_storm',
+                             1, 9, projectiles.Projectiles.Storm, 120, True, 'Storm'),
+        'earth_wall': EarthWall('earth_wall', {}, 1, 'items_weapons_earth_wall',
+                                1, 12, projectiles.Projectiles.Projectile, 600, False, 'Earth Wall'),
+        'lifebringer': MagicWeapon('lifebringer', {}, 1, 'items_weapons_lifebringer',
+                                   20, 100, projectiles.Projectiles.LifeBringer, 500, True, 'Life Bringer'),
+        'target_dummy': TargetDummy('target_dummy', {}, 1, 'items_weapons_target_dummy',
+                                     0, 10, projectiles.Projectiles.Projectile, 15, True, 'Target Dummy'),
+        'judgement_light': MagicWeapon('judgement light', {dmg.DamageTypes.MAGICAL: 20000}, 1, 'items_weapons_judgement_light',
+                                       10, 220, projectiles.Projectiles.JudgementLight, 800, True, 'Judgement Light'),
+        'dark_restrict': MagicWeapon('dark restrict', {}, 1, 'items_weapons_dark_restrict',
+                                      1, 14, projectiles.Projectiles.DarkRestrict, 200, True, 'Dark Restrict'),
+
+        'primal__winds_wand': MagicSet('primal  winds wand', 'items_weapons_primal__winds_wand',
+                                       lambda w: w.name in [' circulates domain', ' wd circulate clockwise',
+                                                            ' wd circulate anticlockwise', ' wd circulate attract',
+                                                            ' wd circulate repel', ' wd strong wind', ' wd extinct'], 'Circulate\'s Domain',
+                                          -1, ),
+
+        '_circulates_domain': Domain(' circulates domain', {}, 1, 'items_weapons__circulates_domain',
+                                     1, 19, 4, 0.02, (150, 250, 230),
+                                     1200, True, 'Circulate\'s Domain'),
+        '_wd_circulate_clockwise': WdCirculateClockwise(' wd circulate clockwise', {}, 1,
+                                                        'items_weapons__wd_circulate_clockwise',
+                                          0, 1, projectiles.Projectiles.Projectile, '_circulates_domain',
+                                                        True, 'Circulate\'s Domain: Clockwise'),
+        '_wd_circulate_anticlockwise': WdCirculateAntiClockwise(' wd circulate anticlockwise', {}, 1,
+                                                              'items_weapons__wd_circulate_anticlockwise',
+                                          0, 1, projectiles.Projectiles.Projectile, '_circulates_domain',
+                                                              True, 'Circulate\'s Domain: Anticlockwise'),
+        '_wd_circulate_attract': WdCirculateAttract(' wd circulate attract', {}, 1,
+                                                    'items_weapons__wd_circulate_attract',
+                                          0, 1, projectiles.Projectiles.Projectile, '_circulates_domain',
+                                                    True, 'Circulate\'s Domain: Attract'),
+        '_wd_circulate_repel': WdCirculateRepel(' wd circulate repel', {}, 1,
+                                                 'items_weapons__wd_circulate_repel',
+                                          0, 1, projectiles.Projectiles.Projectile, '_circulates_domain',
+                                                 True, 'Circulate\'s Domain: Repel'),
+        '_wd_strong_wind': WdStrongWind(' wd strong wind', {dmg.DamageTypes.ARCANE: 128}, 1, 'items_weapons__wd_strong_wind', 0, 1,
+                                        projectiles.Projectiles.Projectile, '_circulates_domain', True,
+                                        'Circulate\'s Domain: Strong Wind'),
+        '_wd_extinct': WdExtinct(' wd extinct', {dmg.DamageTypes.ARCANE: 427}, 1, 'items_weapons__wd_extinct', 0, 1,
+                                 projectiles.Projectiles.Projectile, '_circulates_domain', True,
+                                 'Circulate\'s Domain: Extinct'),
+
+        'primal__life_wand': MagicSet('primal  life wand', 'items_weapons_primal__life_wand',
+                                      lambda w: w.name in [' life domain', ' ld summon tree', ' ld summon cactus',
+                                                           ' ld summon coniferous tree', ' ld summon huge tree',
+                                                           ' ld summon tree monster', ' ld summon bloodflower',
+                                                           ' ld summon soulflower', ' ld heal'],
+                                      'Life\'s Domain', style=-1),
+        '_life_domain': Domain(' life domain', {}, 1, 'items_weapons__life_domain',
+                               1, 19, 4, 0.02, (200, 255, 200),
+                               1200, True, 'Life\'s Domain'),
+        '_ld_summon_tree': LdSpawn(' ld summon tree', {}, 1, 'items_weapons__ld_summon_tree', 0, 2,
+                                    entity.Entities.Tree, '_life_domain', True, 'Life\'s Domain: Tree',
+                                   entity.Entities.Tree),
+        '_ld_summon_cactus': LdSpawn(' ld summon cactus', {}, 1, 'items_weapons__ld_summon', 0, 2,
+                                     entity.Entities.Cactus, '_life_domain', True, 'Life\'s Domain: Cactus',
+                                      entity.Entities.Cactus),
+        '_ld_summon_coniferous_tree': LdSpawn(' ld summon coniferous tree', {}, 1, 'items_weapons__ld_summon', 0, 2,
+                                              entity.Entities.ConiferousTree, '_life_domain', True, 'Life\'s Domain: Coniferous Tree',
+                                               entity.Entities.ConiferousTree),
+        '_ld_summon_huge_tree': LdSpawn(' ld summon huge tree', {}, 1, 'items_weapons__ld_summon', 0, 2,
+                                        entity.Entities.HugeTree, '_life_domain', True, 'Life\'s Domain: Huge Tree',
+                                         entity.Entities.HugeTree),
+        '_ld_summon_tree_monster': LdSpawn(' ld summon tree monster', {}, 1, 'items_weapons__ld_summon', 0, 2,
+                                           entity.Entities.TreeMonster, '_life_domain', True, 'Life\'s Domain: Tree Monster',
+                                            entity.Entities.TreeMonster),
+        '_ld_summon_bloodflower': LdSpawn(' ld summon bloodflower', {}, 1, 'items_weapons__ld_summon', 0, 2,
+                                          entity.Entities.Bloodflower, '_life_domain', True, 'Life\'s Domain: Bloodflower',
+                                           entity.Entities.Bloodflower),
+        '_ld_summon_soulflower': LdSpawn(' ld summon soulflower', {}, 1, 'items_weapons__ld_summon', 0, 2,
+                                          entity.Entities.SoulFlower, '_life_domain', True, 'Life\'s Domain: Soulflower',
+                                           entity.Entities.SoulFlower),
+        '_ld_heal': LdHeal(' ld heal', {}, 1, 'items_weapons__ld_heal', 0, 1,
+                            projectiles.Projectiles.Projectile, '_life_domain', True, 'Life\'s Domain: Heal'),
 
         'ballet_shoes': MagicWeapon('ballet shoes', {dmg.DamageTypes.MAGICAL: 3200}, 0.1,
                                     'items_weapons_ballet_shoes', 1,

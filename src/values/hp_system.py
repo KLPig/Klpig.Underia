@@ -1,6 +1,7 @@
 import random
 
 from src import constants
+from src.physics import distance
 from src.underia import game
 from src.values import reduction, effects, damages
 
@@ -18,6 +19,8 @@ class HPSystem:
     DAMAGE_RANDOMIZE_RANGE = 0.12
     DAMAGE_TEXT_INTERVAL = 5
 
+    SOUND_HURT = None
+
     def __init__(self, hp: float):
         self.resistances = reduction.Resistances()
         self.defenses = reduction.Defenses()
@@ -29,6 +32,8 @@ class HPSystem:
         self.effects: list[effects.Effect] = []
         self.pos = (0, 0)
         self.dmg_t = 0
+        self.SOUND_HURT = None
+        self.shields: list[tuple[str, int]] = []
 
     def __call__(self, *args, **kwargs):
         if 'op' in kwargs:
@@ -45,6 +50,13 @@ class HPSystem:
     def damage(self, damage: float, damage_type: int):
         if self.IMMUNE or self.is_immune:
             return
+        try:
+            d = distance(self.pos[0] - game.get_game().player.obj.pos[0],
+                         self.pos[1] - game.get_game().player.obj.pos[1])
+            if self.SOUND_HURT is not None:
+                game.get_game().play_sound('hit_' + self.SOUND_HURT, vol=0.99 ** int(d / 10))
+        except ValueError:
+            pass
         dmg = damage * self.resistances[damage_type] - self.defenses[damage_type]
         dmg *= (1 - self.DAMAGE_RANDOMIZE_RANGE + 2 *
                 self.DAMAGE_RANDOMIZE_RANGE * random.random())
@@ -53,6 +65,11 @@ class HPSystem:
             self.dmg_t = self.DAMAGE_TEXT_INTERVAL
             game.get_game().damage_texts.append(
                 (int(dmg), 0, (self.pos[0] + random.randint(-10, 10), self.pos[1] + random.randint(-10, 10))))
+        if len(self.shields):
+            self.shields[0] = (self.shields[0][0], self.shields[0][1] - dmg)
+            if self.shields[0][1] <= 0:
+                self.shields.pop(0)
+            return
         self.hp -= dmg
         if self.hp <= 0:
             self.hp = 0

@@ -4,7 +4,7 @@ import random
 
 import pygame
 
-from src import resources, visual, constants
+from src import resources, visual, constants, physics
 from src.underia import player, entity, projectiles, weapons
 import perlin_noise
 import datetime
@@ -30,6 +30,7 @@ class Game:
         self.displayer = visual.Displayer()
         self.graphics = resources.Graphics()
         self.events = []
+        self.p_obj = []
         self.player = player.Player()
         self.pressed_keys = []
         self.pressed_mouse = []
@@ -53,6 +54,9 @@ class Game:
         self.map_ns = {}
         self.m_min = 0
         self.m_max = 0
+        self.sounds: dict[str, pygame.mixer.Sound] = {}
+        self.world_events = []
+        self.dummy = None
 
     def get_night_color(self, time_days: float):
         if len([1 for e in self.entities if type(e) is entity.Entities.AbyssEye]):
@@ -79,6 +83,18 @@ class Game:
             b = 0
         return r, g, b
 
+    def on_day_start(self):
+        if 'blood moon' in self.world_events:
+            self.world_events.remove('blood moon')
+        if random.random() < 0.05:
+            self.world_events.append('solar eclipse')
+
+    def on_day_end(self):
+        if 'solar eclipse' in self.world_events:
+            self.world_events.remove('solar eclipse')
+        if random.random() < 0.05:
+            self.world_events.append('blood moon')
+
     def load_graphics(self, directory, index=''):
         for file in os.listdir(directory):
             if os.path.isfile(os.path.join(directory, file)):
@@ -89,6 +105,8 @@ class Game:
                 self.load_graphics(os.path.join(directory, file), index + file + '_')
 
     def setup(self):
+        self.p_obj = []
+        self.sounds = {}
         self.map_ns = {}
         self.m_min = 0
         self.m_max = 0
@@ -107,7 +125,15 @@ class Game:
         for m in os.listdir(resources.get_path('assets/musics')):
             if m.endswith('.ogg'):
                 self.musics[m.removesuffix('.ogg')] = pygame.mixer.Sound(resources.get_path('assets/musics/' + m))
+        for s in os.listdir(resources.get_path('assets/sounds')):
+            if s.endswith('.wav') or s.endswith('.ogg'):
+                self.sounds[s.split('.')[0]] = pygame.mixer.Sound(resources.get_path('assets/sounds/' + s))
 
+    def play_sound(self, sound: str, vol=1.0):
+        self.sounds[sound].set_volume(vol)
+        if self.sounds[sound].get_num_channels():
+            return
+        self.sounds[sound].play()
 
     def on_update(self):
         pass
@@ -161,6 +187,9 @@ class Game:
             return 'forest'
         """
 
+    def get_player_objects(self) -> list[physics.Mover]:
+        return [self.player.obj] + self.p_obj
+
     def update(self):
         if (self.prepared_music is None and self.channel.get_busy() == 0) or \
                 (self.cur_music is not None and (self.get_biome() + str(int(0.3 < self.day_time < 0.7))) not in
@@ -187,6 +216,10 @@ class Game:
         int(self.player.obj.pos[0]) // self.CHUNK_SIZE + 120, int(self.player.obj.pos[1]) // self.CHUNK_SIZE + 120)
         self.day_time += self.TIME_SPEED
         self.day_time %= 1.0
+        if self.day_time - self.TIME_SPEED < 0.25 <= self.day_time:
+            self.on_day_start()
+        if self.day_time - self.TIME_SPEED < 0.8 <= self.day_time:
+            self.on_day_end()
         self.on_update()
         self.clock.update()
         self.events = pygame.event.get()
@@ -195,7 +228,19 @@ class Game:
                 raise resources.Interrupt()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    raise resources.Interrupt()
+                    paused = True
+                    while paused:
+                        for ev in pygame.event.get():
+                            if ev.type == pygame.QUIT:
+                                raise resources.Interrupt()
+                            elif ev.type == pygame.KEYDOWN:
+                                if ev.key == pygame.K_BACKSPACE:
+                                    paused = False
+                                elif ev.key == pygame.K_ESCAPE:
+                                    raise resources.Interrupt()
+                        pygame.display.flip()
+                    self.pressed_mouse = []
+                    self.pressed_keys = []
                 else:
                     self.pressed_keys.append(event.key)
             elif event.type == pygame.KEYUP:
@@ -246,14 +291,16 @@ class Game:
                     lg = pygame.transform.scale(lg, (bg_size, bg_size))
                     self.displayer.canvas.blit(lg, (i - bg_ax, j - bg_ay))
 
-
-
-
         self.player.update()
         for monster in self.entities:
             monster.update()
             if monster.hp_sys.hp <= 0:
                 self.entities.remove(monster)
+                if monster.obj.IS_OBJECT:
+                    if monster.SOUND_DEATH is not None:
+                        monster.play_sound('killed_' + monster.SOUND_DEATH)
+                    else:
+                        monster.play_sound('enemydust')
                 loots = monster.LOOT_TABLE()
                 for item, amount in loots:
                     k = random.randint(self.ITEM_SPLIT_MIN, min(self.ITEM_SPLIT_MAX, amount))

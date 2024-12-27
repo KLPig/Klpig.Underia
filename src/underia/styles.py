@@ -60,12 +60,19 @@ def text(txt: str) -> str:
     return s
 
 
-def item_mouse(x, y, name, no, amount, scale, anchor='left'):
+def item_mouse(x, y, name, no, amount, scale, anchor='left', _window=None, mp=None):
     if name == 'null':
         return
-    window = game.get_game().displayer.canvas
+    if _window is None:
+        window = game.get_game().displayer.canvas
+    else:
+        window = _window
     r = (x, y, 80 * scale, 80 * scale)
-    if pg.Rect(r).collidepoint(game.get_game().displayer.reflect(*pg.mouse.get_pos())):
+    if mp is not None:
+        mps = mp
+    else:
+        mps = game.get_game().displayer.reflect(*pg.mouse.get_pos())
+    if pg.Rect(r).collidepoint(mps):
         game.get_game().player.in_ui = True
         game.get_game().player.touched_item = name
         desc_split = inventory.ITEMS[name].get_full_desc().split('\n')
@@ -75,46 +82,44 @@ def item_mouse(x, y, name, no, amount, scale, anchor='left'):
                                                   True,
                                                   inventory.Inventory.Rarity_Colors[inventory.ITEMS[name].rarity],
                                                   (0, 0, 0))
-        if game.get_game().displayer.reflect(*pg.mouse.get_pos())[1] > 36 * l:
+        if mps[1] > 36 * l:
             p_y = 0
         else:
-            p_y = 36 * l - game.get_game().displayer.reflect(*pg.mouse.get_pos())[1] + 36
+            p_y = 36 * l - mps[1] + 36
         if anchor == 'left':
-            tr = t.get_rect(bottomleft=(game.get_game().displayer.reflect(*pg.mouse.get_pos())[0],
-                                        game.get_game().displayer.reflect(*pg.mouse.get_pos())[1] - 36 * l + p_y))
+            tr = t.get_rect(bottomleft=(mps[0],
+                                        mps[1] - 36 * l + p_y))
         else:
-            tr = t.get_rect(bottomright=(game.get_game().displayer.reflect(*pg.mouse.get_pos())[0] - 80 * scale,
-                                         game.get_game().displayer.reflect(*pg.mouse.get_pos())[1] - 36 * l + p_y))
+            tr = t.get_rect(bottomright=(mps[0] - 80 * scale,
+                                         mps[1] - 36 * l + p_y))
         window.blit(t, tr)
 
         for j in range(l - 1):
             t = game.get_game().displayer.font.render(text(desc_split[j]), True,
                                                       (255, 255, 255), (0, 0, 0))
             if anchor == 'left':
-                tr = t.get_rect(bottomleft=(game.get_game().displayer.reflect(*pg.mouse.get_pos())[0],
-                                            game.get_game().displayer.reflect(*pg.mouse.get_pos())[1] - 36 * (
-                                                        l - j - 1) + p_y))
+                tr = t.get_rect(bottomleft=(mps[0], mps[1] - 36 * (l - j - 1) + p_y))
             else:
-                tr = t.get_rect(bottomright=(
-                    game.get_game().displayer.reflect(*pg.mouse.get_pos())[0] - 80 * scale,
-                    game.get_game().displayer.reflect(*pg.mouse.get_pos())[1] - 36 * (l - j - 1) + p_y))
+                tr = t.get_rect(bottomright=(mps[0] - 80 * scale, mps[1] - 36 * (l - j - 1) + p_y))
             window.blit(t, tr)
 
 
-def item_display(x, y, name, no, amount, scale, selected=False, _window=None):
+def item_display(x, y, name, no, amount, scale, selected=False, _window=None, mp=None):
     if _window is None:
         window = game.get_game().displayer.canvas
-        f = 1
     else:
         window = _window
-        f = 0
     r = (x, y, 80 * scale, 80 * scale)
-    if f and pg.Rect(r).collidepoint(game.get_game().displayer.reflect(*pg.mouse.get_pos())):
+    if mp is not None:
+        mps = mp
+    else:
+        mps = game.get_game().displayer.reflect(*pg.mouse.get_pos())
+    if pg.Rect(r).collidepoint(mps):
         pg.draw.rect(window, (160, 160, 160), r)
     else:
         pg.draw.rect(window, (127, 127, 127), r)
     pg.draw.rect(window, (0, 0, 0), r, 3)
-    im = game.get_game().graphics['items_' + name]
+    im = game.get_game().graphics['items_' + inventory.ITEMS[name].img]
     im = copy.copy(pg.transform.scale(im, (64 * scale, 64 * scale)))
     imr = im.get_rect(center=(x + 40 * scale, y + 40 * scale))
     window.blit(im, imr)

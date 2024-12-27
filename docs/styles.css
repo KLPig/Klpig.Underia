@@ -82,3 +82,8 @@ tr {
 .header-class:hover {
     background-color: #e6e6e6;
 }
+
+.header {
+    position: sticky;
+    top: 0;
+}

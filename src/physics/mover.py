@@ -63,7 +63,7 @@ class Mover:
             rot = vector.coordinate_rotation(other.pos[0] - self.pos[0], other.pos[1] - self.pos[1])
             self.velocity.add(vector.Vector(rot,
                                             max(-50, -(
-                                                        required_distance - d) / 80 + other.velocity.get_net_value() * math.cos(
+                                                        required_distance - d) / 10 + other.velocity.get_net_value() * math.cos(
                                                 math.radians(rot - self.velocity.get_net_rotation())) / 30)))
             return True
         return False

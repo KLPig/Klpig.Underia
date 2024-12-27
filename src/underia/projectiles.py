@@ -1,13 +1,14 @@
 import copy
 import math
-
+import random
 import pygame as pg
 
 from src.physics import mover, vector
 from src.resources import position
 from src.underia import game, weapons
-from src.values import damages, effects
+from src.values import damages, effects, DamageTypes
 from src.visual import effects as eff
+from src.visual import particle_effects
 
 
 class ProjectileMotion(mover.Mover):
@@ -15,7 +16,7 @@ class ProjectileMotion(mover.Mover):
     FRICTION = 0.98
     TOUCHING_DAMAGE = 10
 
-    def __init__(self, pos, rotation, spd=0):
+    def __init__(self, pos, rotation=0, spd=0):
         super().__init__(pos)
         self.rotation = rotation
         self.apply_force(vector.Vector(self.rotation, spd * 12))
@@ -129,18 +130,19 @@ class Projectiles:
             if self.obj.velocity.get_net_value() < 3:
                 self.dead = True
             imr = self.d_img.get_rect(center=self.obj.pos)
-            for entity in game.get_game().entities:
-                if imr.collidepoint(entity.obj.pos[0], entity.obj.pos[1]) or entity.d_img.get_rect(
-                        center=entity.obj.pos).collidepoint(self.obj.pos[0], self.obj.pos[1]):
-                    entity.hp_sys.damage(weapons.WEAPONS['glowing_splint'].damages[
-                                             damages.DamageTypes.MAGICAL] * game.get_game().player.attack *
-                                         game.get_game().player.attacks[2],
-                                         damages.DamageTypes.MAGICAL)
-                    entity.hp_sys.effect(effects.Burning(5, weapons.WEAPONS['glowing_splint'].damages[
-                        damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[
-                                                             2] // 10 + 1))
-                    self.dead = True
-                    break
+            if type(self) is Projectiles.Glow:
+                for entity in game.get_game().entities:
+                    if imr.collidepoint(entity.obj.pos[0], entity.obj.pos[1]) or entity.d_img.get_rect(
+                            center=entity.obj.pos).collidepoint(self.obj.pos[0], self.obj.pos[1]):
+                        entity.hp_sys.damage(weapons.WEAPONS['glowing_splint'].damages[
+                                                 damages.DamageTypes.MAGICAL] * game.get_game().player.attack *
+                                             game.get_game().player.attacks[2],
+                                             damages.DamageTypes.MAGICAL)
+                        entity.hp_sys.effect(effects.Burning(5, weapons.WEAPONS['glowing_splint'].damages[
+                            damages.DamageTypes.MAGICAL] * game.get_game().player.attack * game.get_game().player.attacks[
+                                                                 2] // 10 + 1))
+                        self.dead = True
+                        break
 
     class BurningBook(Projectile):
         NAME = 'Burning Book'
@@ -223,6 +225,7 @@ class Projectiles:
         DAMAGE_AS = 'copper_wand'
         IMG = 'projectiles_copper_wand'
         DMG_TYPE = damages.DamageTypes.MAGICAL
+        WT = damages.DamageTypes.MAGICAL
 
         def __init__(self, pos, rotation):
             super().__init__(pos, rotation)
@@ -232,16 +235,19 @@ class Projectiles:
             super().update()
             if self.obj.velocity.get_net_value() < 3:
                 self.dead = True
+            self.damage()
 
         def damage(self):
-            kb = weapons.WEAPONS[self.DAMAGE_AS].knock_backc
+            kb = weapons.WEAPONS[self.DAMAGE_AS].knock_back
             imr = self.d_img.get_rect(center=self.obj.pos)
             for entity in game.get_game().entities:
                 if imr.collidepoint(entity.obj.pos[0], entity.obj.pos[1]) or entity.d_img.get_rect(
                         center=entity.obj.pos).collidepoint(self.obj.pos[0], self.obj.pos[1]):
+                    at_mt = {damages.DamageTypes.PHYSICAL: 0, damages.DamageTypes.PIERCING: 1,
+                             damages.DamageTypes.ARCANE: 2, damages.DamageTypes.MAGICAL: 2}[self.WT]
                     entity.hp_sys.damage(
                         weapons.WEAPONS[self.DAMAGE_AS].damages[self.DMG_TYPE] * game.get_game().player.attack *
-                        game.get_game().player.attacks[2], self.DMG_TYPE)
+                        game.get_game().player.attacks[at_mt], self.DMG_TYPE)
                     self.dead = True
                     if not entity.hp_sys.is_immune:
                         r = vector.coordinate_rotation(entity.obj.pos[0] - self.obj.pos[0],
@@ -255,10 +261,11 @@ class Projectiles:
     class PlatinumWand(CopperWand):
         DAMAGE_AS = 'platinum_wand'
         IMG = 'projectiles_platinum_wand'
+        SPD = 100
 
         def __init__(self, pos, rotation):
             super().__init__(pos, rotation)
-            self.obj = ProjectileMotion(pos, rotation)
+            self.obj = ProjectileMotion(pos, rotation, spd=self.SPD)
             self.obj.apply_force(vector.Vector(rotation, 100))
             self.tick = 0
 
@@ -272,11 +279,19 @@ class Projectiles:
         DAMAGE_AS = 'rock_wand'
         IMG = 'projectiles_rock_wand'
 
+    class WindBlade(PlatinumWand):
+        DAMAGE_AS = 'blade_wand'
+        IMG = 'projectiles_wind_blade'
+        WT = damages.DamageTypes.MAGICAL
+        SPD = 320
+
     class NightsEdge(PlatinumWand):
         DAMAGE_AS = 'nights_edge'
         IMG = 'projectiles_nights_edge'
+        WT = damages.DamageTypes.PHYSICAL
 
         def update(self):
+            self.WT = damages.DamageTypes.PHYSICAL
             super().update()
             self.tick += 1
             if self.tick > 100:
@@ -324,12 +339,29 @@ class Projectiles:
             else:
                 self.obj.pos = game.get_game().player.obj.pos
             self.tick += 1
+            if self.tick < 5:
+                self.img = copy.copy(game.get_game().graphics[self.IMG])
+                self.img = pg.transform.scale_by(self.img, self.tick ** 2 / 25)
+                self.img.set_alpha(self.ALPHA * self.tick ** 2 // 25)
+                self.d_img = self.img
+            elif self.tick > self.DURATION - 5:
+                self.img = copy.copy(game.get_game().graphics[self.IMG])
+                self.img = pg.transform.scale_by(self.img, (self.DURATION - self.tick) ** 2 / 25)
+                self.img.set_alpha(self.ALPHA * (self.DURATION - self.tick) ** 2 // 25)
+                self.d_img = self.img
+            else:
+                self.img = copy.copy(game.get_game().graphics[self.IMG])
+                self.img.set_alpha(self.ALPHA)
+                self.d_img = self.img
             if self.tick > self.DURATION:
                 self.dead = True
             displayer = game.get_game().displayer
             self.set_rotation(self.ROT_SPEED * self.tick)
             imr = self.d_img.get_rect(center=position.displayed_position((self.obj.pos[0], self.obj.pos[1])))
             displayer.canvas.blit(self.d_img, imr)
+            self.damage()
+
+        def damage(self):
             for entity in game.get_game().entities:
                 ex, ey = entity.obj.pos
                 if vector.distance(self.obj.pos[0] - ex,
@@ -354,6 +386,48 @@ class Projectiles:
         IMG = 'projectiles_light_purify'
         ROT_SPEED = 10
         ALPHA = 80
+
+    class Storm(MagicCircle):
+        DAMAGE_AS ='storm'
+        IMG = 'projectiles_storm'
+        ROT_SPEED = 28
+        ALPHA = 127
+        DURATION = 120
+        AUTO_FOLLOW = True
+
+        def update(self):
+            super().update()
+            self.obj.FRICTION = 0.5
+            self.obj.MASS = 50000000
+            for entity in game.get_game().entities:
+                entity.obj.object_gravitational(self.obj)
+                self.obj.object_gravitational(entity.obj)
+            for p in game.get_game().projectiles:
+                p.obj.object_gravitational(self.obj)
+                self.obj.object_gravitational(p.obj)
+            game.get_game().player.obj.object_gravitational(self.obj)
+            self.obj.object_gravitational(game.get_game().player.obj)
+
+    class LifeBringer(MagicCircle):
+        DAMAGE_AS = 'lifebringer'
+        IMG = 'projectiles_lifebringer'
+        ROT_SPEED = 20
+        ALPHA = 127
+        DURATION = 120
+        AUTO_FOLLOW = True
+
+        def update(self):
+            super().update()
+            px, py = game.get_game().player.obj.pos
+            if vector.distance(self.obj.pos[0] - px, self.obj.pos[1] - py) < self.img.get_width() // 2:
+                game.get_game().player.hp_sys.heal(3)
+                game.get_game().player.talent = min(game.get_game().player.talent + 0.25,
+                                                    game.get_game().player.max_talent)
+                game.get_game().player.mana = min(game.get_game().player.mana + 6, game.get_game().player.max_mana)
+
+
+        def damage(self):
+            pass
 
     class ShieldWand(MagicCircle):
         DAMAGE_AS = 'shield_wand'
@@ -386,6 +460,92 @@ class Projectiles:
         def __init__(self, pos, rotation):
             super().__init__(pos, rotation)
             game.get_game().player.hp_sys.effect(effects.Gravity(1, 255))
+
+    class JudgementLight(Projectile):
+        def __init__(self, pos, rotation):
+            super().__init__(pos, rotation, motion=mover.Mover)
+            self.img = game.get_game().graphics['projectiles_judgement_light']
+            self.d_img = self.img
+            self.tx, self.ty = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+            self.tick = 0
+            self.te = []
+            for e in game.get_game().entities:
+                ex, ey = e.obj.pos
+                if vector.distance(self.tx - ex, self.ty - ey) < 300:
+                    self.te.append(e)
+            self.tep = [e.obj.pos for e in self.te]
+
+        def update(self):
+            self.tick += 1
+            for i in range(len(self.te)):
+                self.te[i].obj.pos = self.tep[i]
+            pg.draw.circle(game.get_game().displayer.canvas, (255, 255, 200),
+                           position.displayed_position((self.tx, self.ty)), 300 / game.get_game().player.get_screen_scale(),
+                           2)
+            if self.tick < 80:
+                w = 1
+            elif self.tick < 90:
+                w = 1 + (self.tick - 80) ** 2 * 6
+            elif self.tick < 210:
+                w = 600
+            elif self.tick < 220:
+                w = 601 - (self.tick - 210) ** 2 * 6
+            else:
+                self.dead = True
+                return
+            w += int(math.sin(self.tick / 10) * 10)
+            sf = pg.Surface((600, 2600), pg.SRCALPHA)
+            sf.fill((0, 0, 0, 0))
+            pg.draw.line(sf, (255, 255, 200),
+                         (300, 300), (300, 2300), width=w)
+            pg.draw.circle(sf, (255, 255, 200),
+                           (300, 2300), w // 2)
+            sf.set_alpha(100)
+            sf = pg.transform.scale_by(sf, 1 / game.get_game().player.get_screen_scale())
+            sfr = sf.get_rect(midbottom=position.displayed_position((self.tx,
+                                                                     self.ty + 500 / game.get_game().player.get_screen_scale())))
+            game.get_game().displayer.canvas.blit(sf, sfr)
+            for e in game.get_game().entities:
+                ex, ey = e.obj.pos
+                if vector.distance(self.tx - ex, self.ty - ey) < w // 2:
+                    e.hp_sys.damage(weapons.WEAPONS['judgement_light'].damages[damages.DamageTypes.MAGICAL] *
+                                     game.get_game().player.attack * game.get_game().player.attacks[2],
+                                     damages.DamageTypes.MAGICAL)
+
+    class DarkRestrict(Projectile):
+        def __init__(self, pos, rotation):
+            super().__init__(pos, rotation, motion=mover.Mover)
+            self.tick = 0
+            self.img = game.get_game().graphics['entity_null']
+            self.d_img = self.img
+            self.tx, self.ty = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+            self.obj.pos = self.tx, self.ty
+            self.te = []
+            for e in game.get_game().entities:
+                ex, ey = e.obj.pos
+                if vector.distance(self.tx - ex, self.ty - ey) < 800:
+                    self.te.append(e)
+            self.tep = [e.obj.pos for e in self.te]
+
+        def update(self):
+            self.tick += 1
+            if self.tick < 10:
+                w = self.tick ** 2 * 4
+            elif self.tick < 70:
+                w = 400
+            elif self.tick < 80:
+                w = 400 - (self.tick - 70) ** 2 * 4
+            else:
+                self.dead = True
+                return
+            pg.draw.circle(game.get_game().displayer.canvas, (0, 0, 0),
+                           position.displayed_position((self.tx, self.ty)), w, 2)
+            for i in range(len(self.te)):
+                pg.draw.line(game.get_game().displayer.canvas, (0, 0, 0),
+                             position.displayed_position(self.tep[i]),
+                             position.displayed_position(self.te[i].obj.pos), 10)
+                self.te[i].obj.pos = self.tep[i]
+
 
     class Beam(Projectile):
         WIDTH = 120
@@ -434,7 +594,10 @@ class Projectiles:
                         ((ex > 0) == self.lf) and ((ey > 0) == self.lr) and vector.distance(ey, ex) < self.LENGTH:
                     entity.hp_sys.damage((weapons.WEAPONS[self.DAMAGE_AS].damages[self.DMG_TYPE] if self.DMG is None
                                           else self.DMG) * \
-                                         game.get_game().player.attack * game.get_game().player.attacks[2],
+                                         game.get_game().player.attack * game.get_game().player.attacks[{DamageTypes.PHYSICAL: 0,
+                                                                                                         DamageTypes.PIERCING: 1,
+                                                                                                         DamageTypes.MAGICAL: 2,
+                                                                                                         DamageTypes.ARCANE: 2}[self.DMG_TYPE]],
                                          self.DMG_TYPE)
             if self.tick > self.DURATION:
                 self.dead = True
@@ -447,6 +610,22 @@ class Projectiles:
             pg.draw.line(game.get_game().displayer.canvas, self.COLOR, position.displayed_position(self.start_pos),
                          position.displayed_position(self.end_pos), size)
 
+    class BladeBeam(Beam):
+        WIDTH = 100
+        LENGTH = 3200
+        DAMAGE_AS = 'the_blade'
+        COLOR = (0, 150, 50)
+        DURATION = 12
+        DMG_TYPE = damages.DamageTypes.PHYSICAL
+
+    class BladeBeamSmall(BladeBeam):
+        WIDTH = 30
+        LENGTH = 3200
+        DAMAGE_AS = 'the_blade'
+        COLOR = (127, 255, 127)
+        DURATION = 10
+        DMG_TYPE = damages.DamageTypes.PHYSICAL
+
     class WatcherWand(Beam):
         WIDTH = 10
         LENGTH = 200
@@ -454,12 +633,104 @@ class Projectiles:
         COLOR = (255, 0, 0)
         DURATION = 10
 
+    class LifeWoodenSword(Beam):
+        WIDTH = 30
+        LENGTH = 150
+        DAMAGE_AS = 'life_wooden_sword'
+        COLOR = (0, 80, 0)
+        DURATION = 5
+        DMG_TYPE = damages.DamageTypes.PHYSICAL
+
     class LifeWoodenWand(Beam):
         WIDTH = 20
         LENGTH = 1000
         DAMAGE_AS = 'life_wooden_wand'
         COLOR = (0, 80, 0)
         DURATION = 15
+
+    class BloodSacrifice(Beam):
+        WIDTH = 40
+        LENGTH = 1000
+        DAMAGE_AS = 'blood_sacrifice'
+        COLOR = (255, 0, 0)
+        DURATION = 28
+
+    class RedBeam(Beam):
+        WIDTH = 40
+        LENGTH = 1800
+        DAMAGE_AS = 'double_watcher_wand'
+        COLOR = (255, 100, 100)
+        DURATION = 20
+
+    class GreenBeam(Beam):
+        WIDTH = 30
+        LENGTH = 2400
+        DAMAGE_AS = 'double_watcher_wand'
+        COLOR = (100, 255, 100)
+        DURATION = 20
+
+    class BeamPair(Projectile):
+        def __init__(self, pos, rotation):
+            super().__init__(pos, rotation, motion=mover.Mover)
+            mx, my = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+            r = Projectiles.RedBeam((pos[0] + random.randint(-300, 300), pos[1] + random.randint(-300, 300)),
+                                    rotation)
+            r.rot = vector.coordinate_rotation(mx - r.pos[0], my - r.pos[1])
+            g = Projectiles.GreenBeam((pos[0] + random.randint(-300, 300), pos[1] + random.randint(-300, 300)),
+                                      rotation)
+            g.rot = vector.coordinate_rotation(mx - g.pos[0], my - g.pos[1])
+            if random.randint(0, 1):
+                game.get_game().projectiles.append(r)
+                game.get_game().projectiles.append(g)
+            else:
+                game.get_game().projectiles.append(g)
+                game.get_game().projectiles.append(r)
+            self.dead = True
+
+        def update(self):
+            pass
+
+    class Meteor(Projectile):
+        DAMAGE_AS = 'skyfire__meteor'
+        IMG = 'projectiles_meteor'
+        DMG_TYPE = damages.DamageTypes.MAGICAL
+
+        def __init__(self, pos, rotation):
+            super().__init__(pos, rotation, motion=mover.Mover)
+            self.img = game.get_game().graphics[self.IMG]
+            self.d_img = self.img
+            self.rot = rotation
+            self.dead = False
+            self.tick = 0
+            self.set_rotation(rotation)
+            self.ps = [pos]
+            self.tpx, self.tpy = position.real_position(game.get_game().displayer.reflect(*pg.mouse.get_pos()))
+            self.tpx += random.randint(-100, 100)
+            self.tpy += random.randint(-100, 100)
+
+        def update(self):
+            self.tick += 1
+            self.obj.pos = self.tpx, self.tpy - 4500 + 5 * self.tick ** 2
+            self.ps.append(self.obj.pos)
+            if len(self.ps) > 5:
+                self.ps.pop(0)
+            super().update()
+            # eff.pointed_curve((255, 100, 150), self.ps, 50, 127)
+            pg.draw.circle(game.get_game().displayer.canvas, (255, 0, 0), position.displayed_position((self.tpx, self.tpy)),
+                           radius=600 // game.get_game().player.get_screen_scale(), width=2)
+            if self.tick >= 30:
+                for e in game.get_game().entities:
+                    if vector.distance(self.obj.pos[0] - e.obj.pos[0], self.obj.pos[1] - e.obj.pos[1]) < 600:
+                        e.hp_sys.damage(
+                            weapons.WEAPONS[self.DAMAGE_AS].damages[self.DMG_TYPE] * game.get_game().player.attack *
+                            game.get_game().player.attacks[{DamageTypes.PHYSICAL: 0,
+                                                             DamageTypes.PIERCING: 1,
+                                                             DamageTypes.MAGICAL: 2,
+                                                             DamageTypes.ARCANE: 2}[self.DMG_TYPE]], self.DMG_TYPE)
+                self.dead = True
+                game.get_game().displayer.effect(particle_effects.p_particle_effects(*position.displayed_position(self.obj.pos),
+                                                                                     r=40, t=15, sp=30, n=30))
+
 
     class BeamLight(Beam):
         WIDTH = 100
@@ -486,6 +757,7 @@ class Projectiles:
     class Excalibur(NightsEdge):
         DAMAGE_AS = 'excalibur'
         IMG = 'projectiles_excalibur'
+        WT = damages.DamageTypes.PHYSICAL
 
     class TrueExcalibur(Excalibur):
         DAMAGE_AS = 'true_excalibur'
@@ -519,6 +791,40 @@ class Projectiles:
     class EvilBook(BloodWand):
         DAMAGE_AS = 'evil_book'
         IMG = 'projectiles_evil_book'
+
+    class Seraph(Projectile):
+        def __init__(self, pos, rotation):
+            super().__init__(pos, rotation, motion=mover.Mover)
+            self.img = copy.copy(game.get_game().graphics['projectiles_seraph'])
+            self.d_img = self.img
+            self.rot = rotation
+            self.dead = False
+            self.tick = 0
+            self.set_rotation(0)
+
+        def update(self):
+            px, py = game.get_game().player.obj.pos
+            self.obj.pos = (px, py - 1000)
+            self.tick += 1
+            pg.draw.circle(game.get_game().displayer.canvas, (255, 0, 0), position.displayed_position(self.obj.pos),
+                           radius=2000 // game.get_game().player.get_screen_scale(), width=12)
+            if self.tick < 10:
+                self.img.set_alpha(self.tick * 10)
+            elif self.tick < 90:
+                if self.tick % 8 == 0:
+                    game.get_game().displayer.effect(particle_effects.p_particle_effects(*position.displayed_position(self.obj.pos),
+                                                                                         n=120, r=10, t=50, sp=40))
+                    for e in game.get_game().entities:
+                        if vector.distance(self.obj.pos[0] - e.obj.pos[0], self.obj.pos[1] - e.obj.pos[1]) < 2000:
+                            e.hp_sys.damage(
+                                weapons.WEAPONS['forbidden_curse__fire'].damages[damages.DamageTypes.ARCANE] * game.get_game().player.attack *
+                                game.get_game().player.attacks[2], damages.DamageTypes.ARCANE)
+            elif self.tick < 100:
+                self.img.set_alpha(100 - (self.tick - 90) * 10)
+            else:
+                self.dead = True
+            super().update()
+
 
     class Arrow(Projectile):
         NAME = 'Arrow'

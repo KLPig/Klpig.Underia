@@ -3,22 +3,27 @@ from src.values import damages
 
 
 class Inventory:
-    COMMON = 0
-    UNCOMMON = 1
-    RARE = 2
-    VERY_RARE = 3
-    EPIC = 4
-    LEGENDARY = 5
-    MYTHIC = 6
-    SUPER_MYTHIC = 7
-    GODLIKE = 8
-    SUPER_GODLIKE = 9
+    DEFAULT = 0
+    COMMON = 1
+    UNCOMMON = 2
+    RARE = 3
+    VERY_RARE = 4
+    PROFICIENCY_MADE = 5
+    EPIC = 6
+    LEGENDARY = 7
+    MASTERWORK = 8
+    SUPREME = 9
+    MYTHIC = 10
+    SUPER_MYTHIC = 11
+    GODLIKE = 12
+    SUPER_GODLIKE = 13
     UNKNOWN = 114
 
-    Rarity_Colors = [(255, 255, 255), (255, 255, 127), (150, 255, 127), (127, 255, 255), (255, 127, 127),
-                     (255, 165, 64), (128, 64, 128), (255, 200, 255), (255, 127, 255), (255, 200, 255), (255, 255, 255)]
-    Rarity_Names = ["Common", "Uncommon", "Rare", "Very Rare", "Epic", "Legendary", "Mythic", "Super Mythic", "Godlike",
-                    "Super Godlike", "Unknown"]
+    Rarity_Colors = [(127, 127, 127), (255, 255, 255), (180, 180, 255), (150, 255, 127), (127, 255, 255), (255, 127, 127),
+                     (64, 255, 200), (255, 200, 64), (127, 64, 64), (255, 64, 64), (127, 20, 127), (255, 127, 255),
+                     (200, 200, 64), (255, 255, 127), (0, 0, 0)]
+    Rarity_Names = ["Default", "Common", "Uncommon", "Rare", "Very Rare", "Proficiency-Made", "Epic", "Legendary", "Masterwork",
+                    "Supreme", "Mythic", "Super Mythic", "Godlike", "Super Godlike", "Unknown"]
 
     class Item:
         class Tag:
@@ -29,13 +34,15 @@ class Inventory:
             def get_all_items(self):
                 return [item for item in ITEMS.values() if self.name in [tag.name for tag in item.tags]]
 
-        def __init__(self, name, description, identifier: str, rarity: int = 0, tags: list[Tag] = []):
+        def __init__(self, name, description, identifier: str, rarity: int = 0, tags: list[Tag] = [],
+                     specify_img: str = None):
             self.name = name
             self.desc = description
             self.id = identifier
             self.rarity = rarity
             self.tags = tags
             self.inner_id = 0
+            self.img = specify_img if specify_img else self.id
 
         def __str__(self):
             return f"#{self.inner_id}: {self.name} - {self.desc}"
@@ -78,6 +85,7 @@ class Inventory:
             elif TAGS['ammo'] in self.tags:
                 ammo = projectiles.AMMOS[self.id]
                 d = f"{ammo.DAMAGES} piercing damage\n" + d
+            d = f"{Inventory.Rarity_Names[self.rarity]}\n" + d
             return d
 
     def __init__(self):
@@ -126,7 +134,7 @@ class Inventory:
 
     def sort(self):
         self.items = {k: v for k, v in
-                      sorted(self.items.items(), key=lambda item: ITEMS[item[0]].inner_id, reverse=True)}
+                      sorted(self.items.items(), key=lambda item: ITEMS[item[0]].inner_id, reverse=True) if k != 'null'}
 
 
 TAGS = {
@@ -175,6 +183,46 @@ TAGS = {
 items_dict: dict[str, Inventory.Item] = {
     'null': Inventory.Item('null', '', 'null', 0, [TAGS['item']]),
 
+    'recipe_book': Inventory.Item('Recipe Book', 'Find related recipes', 'recipe_book', 0, [TAGS['item']]),
+
+    'tip0': Inventory.Item('Paper tip', 'Trap a star-shaped monster, '
+                                        'it\'ll help you to enhance your intelligence.',
+                           'tip0', 0, [TAGS['item']]),
+    'tip1': Inventory.Item('Paper tip', 'Get bloods from sanguinary creatures,\n'
+                                        'and attract a dreadfully huge one.', 'tip1', 0, [TAGS['item']]),
+    'tip2': Inventory.Item('Paper tip', 'Go to the hell, use scorching lava to attract their king.\n'
+                                        'They contain a good to make you stronger.', 'tip2', 0, [TAGS['item']]),
+    'tip3': Inventory.Item('Paper tip', 'When you\'re strong enough, a mystery rock will appear.\n'
+                                        'Their smell may attract a sandstorm.', 'tip3', 0,
+                           [TAGS['item']]),
+    'tip4': Inventory.Item('Paper tip', 'Sandstorms have cores, use them also for combining several '
+                                        'weapons to one.\nThey can be also used for summon an otherworldly being.', 'tip4', 0, [TAGS['item']]),
+    'tip5': Inventory.Item('Paper tip', 'Use your strength to break a evil mark.\nUse some souls to '
+                                        'make a heart...\nIt will expose another world for you.', 'tip5', 0,
+                           [TAGS['item']]),
+    'tip61': Inventory.Item('Paper tip', '(This tip is teared at the bottom)\nStrong flying creatures '
+                                         'helps you to go to the sky.', 'tip61', 0, [TAGS['item']]),
+    'tip62': Inventory.Item('Paper tip', '(This tip is teared both at the top and at the bottom)\n'
+                                         'Get strongest materials from the new world.\nDefeat:\n-A twin of \'untrustworthy\''
+                                         ' metal eyes\n-A \'terrified\' worm.\n-A \'unkind\' metal brain.',
+                            'tip62', 0, [TAGS['item']]),
+    'tip63': Inventory.Item('Paper tip', '(This tip is teared at the top)\nFrozen souls are good materials.',
+                            'tip63', 0, [TAGS['item']]),
+    'tip71': Inventory.Item('Paper tip', 'Use your honest, summon a existence who overwatch the river of time.\n'
+                                         'Use three sou...(The rest of the tip is missing)',
+                            'tip71', 0, [TAGS['item']]),
+    'tip72': Inventory.Item('Paper tip', 'Use your kindness, summon a group of existences.\n'
+                                         '...ls and the the strongest weapon you\'ve made to en...(The beginning and the'
+                                         'rest of the tip are missing)\n',
+                            'tip72', 0, [TAGS['item']]),
+    'tip73': Inventory.Item('Paper tip', 'Use your courage, summon a existence who eat people for food.\n'
+                                         '...hance it to a unbelievable weapon.(The beginning of the tip is missing)',
+                            'tip73', 0, [TAGS['item']]),
+    'tip8': Inventory.Item('Paper tip', 'Use photosynthesis, create photon, plant plants, open a new age.',
+                            'tip8', 0, [TAGS['item']]),
+    'tip9': Inventory.Item('Paper tip', 'Use light to summon a dangerous devil of joker.\n',
+                           'tip9', 0, [TAGS['item']]),
+
     'wood': Inventory.Item('Wood', '', 'wood', 0, [TAGS['item']]),
     'leaf': Inventory.Item('Leaf', '', 'leaf', 0, [TAGS['item']]),
     'copper': Inventory.Item('Copper', '', 'copper', 0, [TAGS['item']]),
@@ -194,8 +242,11 @@ items_dict: dict[str, Inventory.Item] = {
     'storm_core': Inventory.Item('Storm Core', '', 'storm_core', 2, [TAGS['item']]),
     'soul': Inventory.Item('Soul', 'Something left after death.', 'soul', 4, [TAGS['item']]),
     'evil_ingot': Inventory.Item('Evil Ingot', 'Endless evil.', 'evil_ingot', 5, [TAGS['item']]),
-    'soul_of_flying': Inventory.Item('Soul of Flying', 'Soul of flying creatures.', 'soul_of_flying', 5,
+    'soul_of_flying': Inventory.Item('Soul of Flying', 'Soul of strong flying creatures.', 'soul_of_flying', 5,
                                      [TAGS['item']]),
+    'soul_of_coldness': Inventory.Item('Soul of Coldness', 'Soul of strong chilling creatures.', 'soul_of_coldness', 5,
+                                       [TAGS['item']]),
+    'soul_of_growth': Inventory.Item('Soul of Growth', 'Soul of strong growing creatures.', 'soul_of_growth', 7, [TAGS['item']]),
     'palladium': Inventory.Item('Palladium', '', 'palladium', 5, [TAGS['item']]),
     'mithrill': Inventory.Item('Mithrill', '', 'mithrill', 5, [TAGS['item']]),
     'titanium': Inventory.Item('Titanium', '', 'titanium', 5, [TAGS['item']]),
@@ -216,7 +267,6 @@ items_dict: dict[str, Inventory.Item] = {
     'soul_of_patience': Inventory.Item('Soul of Patience', 'Power of endurance.', 'soul_of_patience', 6,
                                        [TAGS['item']]),
     'soul_of_justice': Inventory.Item('Soul of Justice', 'Power of fairness.', 'soul_of_justice', 6, [TAGS['item']]),
-    'soul_of_growth': Inventory.Item('Soul of Growth', 'The power to live.', 'soul_of_growth', 7, [TAGS['item']]),
     'photon': Inventory.Item('Photon', 'Light energy', 'photon', 7, [TAGS['item']]),
     'chlorophyte_ingot': Inventory.Item('Chlorophyte Ingot', '', 'chlorophyte_ingot', 7, [TAGS['item']]),
 
@@ -228,9 +278,10 @@ items_dict: dict[str, Inventory.Item] = {
     'wooden_hammer': Inventory.Item('Wooden Hammer', '', 'wooden_hammer', 0, [TAGS['item'], TAGS['workstation']]),
     'furnace': Inventory.Item('Furnace', '', 'furnace', 0, [TAGS['item'], TAGS['workstation']]),
     'anvil': Inventory.Item('Anvil', '', 'anvil', 0, [TAGS['item'], TAGS['workstation']]),
-    'mithrill_anvil': Inventory.Item('Mithrill Anvil', '', 'anvil', 4, [TAGS['item'], TAGS['workstation']]),
+    'mithrill_anvil': Inventory.Item('Mithrill Anvil', '', 'mithrill_anvil', 4, [TAGS['item'], TAGS['workstation']]),
     'chlorophyll': Inventory.Item('Chlorophyll', 'Carry out photosynthesis.', 'chlorophyll', 7,
                                   [TAGS['item'], TAGS['workstation']]),
+    'chaos_ingot': Inventory.Item('Chaos Ingot', 'Power of disarray.', 'chaos_ingot', 7, [TAGS['item'], TAGS['workstation']]),
 
     'wooden_sword': Inventory.Item('Wooden Sword', '', 'wooden_sword', 0, [TAGS['item'], TAGS['weapon']]),
     'copper_sword': Inventory.Item('Copper Sword', '', 'copper_sword', 0, [TAGS['item'], TAGS['weapon']]),
@@ -239,6 +290,7 @@ items_dict: dict[str, Inventory.Item] = {
     'steel_sword': Inventory.Item('Steel Sword', '', 'steel_sword', 0, [TAGS['item'], TAGS['weapon']]),
     'platinum_sword': Inventory.Item('Platinum Sword', '', 'platinum_sword', 1, [TAGS['item'], TAGS['weapon']]),
     'platinum_blade': Inventory.Item('Platinum Blade', '', 'platinum_blade', 1, [TAGS['item'], TAGS['weapon']]),
+    'life_wooden_sword': Inventory.Item('Life Wooden Sword', '', 'life_wooden_sword', 2, [TAGS['item'], TAGS['weapon']]),
     'magic_sword': Inventory.Item('Magic Sword', '', 'magic_sword', 2, [TAGS['item'], TAGS['weapon']]),
     'magic_blade': Inventory.Item('Magic Blade', '', 'magic_blade', 2, [TAGS['item'], TAGS['weapon']]),
     'bloody_sword': Inventory.Item('Bloody Sword', 'When sweeping, press Q to sprint.', 'bloody_sword', 2,
@@ -248,6 +300,8 @@ items_dict: dict[str, Inventory.Item] = {
                                  [TAGS['item'], TAGS['weapon']]),
     'nights_edge': Inventory.Item('Night\'s Edge', 'The sunset has gone, it now night...', 'nights_edge', 4,
                                   [TAGS['item'], TAGS['weapon']]),
+    'storm_swift_sword': Inventory.Item('Storm Swift Sword', 'Press Q to sprint.\n0 mana cost', 'storm_swift_sword', 4,
+                                          [TAGS['item'], TAGS['weapon']]),
     'spiritual_stabber': Inventory.Item('Spiritual Stabber', '\n\'Destroy the mark to enhance\'', 'spiritual_stabber',
                                         4, [TAGS['item'], TAGS['weapon']]),
     'palladium_sword': Inventory.Item('Palladium Sword', '', 'palladium_sword', 5, [TAGS['item'], TAGS['weapon']]),
@@ -260,17 +314,26 @@ items_dict: dict[str, Inventory.Item] = {
                                 [TAGS['item'], TAGS['weapon']]),
     'true_excalibur': Inventory.Item('True Excalibur', 'Inviolable hallow.', 'true_excalibur', 7,
                                      [TAGS['item'], TAGS['weapon']]),
+    'remote_sword': Inventory.Item('Remote Sword', '', 'remote_sword', 6,
+                                    [TAGS['item'], TAGS['weapon']]),
     'true_nights_edge': Inventory.Item('True Night\'s Edge', 'Inviolable dark.', 'true_nights_edge', 7,
                                        [TAGS['item'], TAGS['weapon']]),
-    'perseverance_sword': Inventory.Item('Perseverance Sword', 'Ignore the distance.', 'perseverance_sword', 7,
+    'perseverance_sword': Inventory.Item('Perseverance Sword', 'Ignore the distance.', 'perseverance_sword', 6,
                                          [TAGS['item'], TAGS['weapon']]),
-    'black_hole_sword': Inventory.Item('The Black Hole Sword', 'Attracts enemies.', 'black_hole_sword', 7,
+    'black_hole_sword': Inventory.Item('The Black Hole Sword', 'Attracts enemies.', 'black_hole_sword', 6,
                                        [TAGS['item'], TAGS['weapon']]),
     'life_devourer': Inventory.Item('Life Devourer', 'Cuts lifeless lines.', 'life_devourer', 7,
                                     [TAGS['item'], TAGS['weapon']]),
+    'jevil_knife': Inventory.Item('Jevil Knife', 'Full in chaos', 'jevil_knife', 7,
+                                   [TAGS['item'], TAGS['weapon']]),
+    'the_blade': Inventory.Item('The Blade', 'The mighty of this blade is not necessary to say.',
+                                'the_blade', 8, [TAGS['item'], TAGS['weapon']]),
 
+    'spikeflower': Inventory.Item('Spikeflower', '', 'spikeflower', 0,
+                                  [TAGS['item'], TAGS['weapon']]),
     'spear': Inventory.Item('Spear', '', 'spear', 0, [TAGS['item'], TAGS['weapon']]),
     'platinum_spear': Inventory.Item('Platinum Spear', '', 'platinum_spear', 1, [TAGS['item'], TAGS['weapon']]),
+    'blood_pike': Inventory.Item('Blood Pike', '', 'blood_pike', 2, [TAGS['item'], TAGS['weapon']]),
     'firite_spear': Inventory.Item('Firite Spear', '', 'firite_spear', 2, [TAGS['item'], TAGS['weapon']]),
     'nights_pike': Inventory.Item('Night\'s Pike', 'The sunset has gone, it now night...', 'nights_pike', 4,
                                   [TAGS['item'], TAGS['weapon']]),
@@ -346,7 +409,7 @@ items_dict: dict[str, Inventory.Item] = {
                                    [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_light'],
                                     TAGS['magic_lv_1']]),
     'platinum_wand': Inventory.Item('Platinum Wand', '', 'platinum_wand', 1,
-                                    [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                    [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'],
                                      TAGS['magic_element_energy'], TAGS['magic_lv_1']]),
     'life_wooden_wand': Inventory.Item('Life-Wooden Wand', '', 'life_wooden_wand', 2,
                                         [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_earth'],
@@ -369,6 +432,9 @@ items_dict: dict[str, Inventory.Item] = {
     'rock_wand': Inventory.Item('Rock Wand', '', 'rock_wand', 3,
                                 [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_earth'],
                                  TAGS['magic_lv_3']]),
+    'tornado': Inventory.Item('Tornado', '', 'tornado', 3,
+                               [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                TAGS['magic_lv_3']]),
     'midnights_wand': Inventory.Item('Midnight\'s Wand', 'All darkness...', 'midnights_wand', 4,
                                      [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_dark'],
                                       TAGS['magic_lv_4']]),
@@ -379,6 +445,13 @@ items_dict: dict[str, Inventory.Item] = {
     'evil_book': Inventory.Item('Evil Book', 'Full of corruption\n\n\'Change to enhance\'', 'evil_book', 5,
                                 [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_death'],
                                   TAGS['magic_lv_4']]),
+    'blood_sacrifice': Inventory.Item('Blood Sacrifice', '24 HP Cost.',
+                                       'blood_sacrifice', 5,
+                                       [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_death'],
+                                        TAGS['magic_lv_5']]),
+    'blade_wand': Inventory.Item('Blade Wand', '', 'blade_wand', 5,
+                                  [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                   TAGS['magic_lv_5']]),
     'curse_book': Inventory.Item('Curse Book', 'Curse...', 'curse_book', 6,
                                  [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_dark'],
                                    TAGS['magic_lv_4']]),
@@ -387,7 +460,10 @@ items_dict: dict[str, Inventory.Item] = {
                                     TAGS['magic_lv_4']]),
     'gravity_wand': Inventory.Item('Gravity Wand', 'Simulates gravity.', 'gravity_wand', 6,
                                    [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_earth'],
-                                     TAGS['magic_lv_4']]),
+                                     TAGS['magic_lv_3']]),
+    'double_watcher_wand': Inventory.Item('Double Watcher Wand', '', 'double_watcher_wand', 6,
+                                           [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'],
+                                            TAGS['magic_element_light'], TAGS['magic_element_fire'], TAGS['magic_lv_4']]),
     'forbidden_curse__spirit': Inventory.Item('Forbidden Curse: Spirit', '', 'forbidden_curse__spirit', 7,
                                               [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'],
                                                TAGS['arcane_weapon'], TAGS['magic_element_energy'],
@@ -416,6 +492,40 @@ items_dict: dict[str, Inventory.Item] = {
     'life_wand': Inventory.Item('Life Wand', 'Heal you back to life.', 'life_wand', 7,
                                 [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
                                  TAGS['magic_lv_6']]),
+    'chaos_teleporter': Inventory.Item('Chaos Teleporter', 'Teleport within 1000 ps.', 'chaos_teleporter', 8,
+                                        [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_space'],
+                                         TAGS['magic_lv_3']]),
+    'chaos_killer': Inventory.Item('Chaos Killer', 'Kills enemies.', 'chaos_killer', 8,
+                                  [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_space'],
+                                   TAGS['magic_lv_4']]),
+    'skyfire__meteor': Inventory.Item('Skyfire: Meteor', '', 'skyfire__meteor', 8,
+                                       [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_fire'],
+                                        TAGS['magic_lv_7']]),
+    'azure_guard': Inventory.Item('Azure Guard', 'Adds a 100HP shield', 'azure_guard', 8,
+                                   [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_water'],
+                                    TAGS['magic_lv_7']]),
+    'storm': Inventory.Item('Storm', '', 'storm', 8,
+                            [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                             TAGS['magic_lv_7']]),
+    'earth_wall': Inventory.Item('Earth Wall', '', 'earth_wall', 8,
+                                  [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_earth'],
+                                   TAGS['magic_lv_7']]),
+    'lifebringer': Inventory.Item('Lifebringer', 'Heal 120HP/sec.', 'lifebringer', 8,
+                                  [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                   TAGS['magic_lv_7']]),
+    'target_dummy': Inventory.Item('Target Dummy', '', 'target_dummy', 8,
+                                    [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                     TAGS['magic_lv_7']]),
+    'judgement_light': Inventory.Item('Judgement Light', '', 'judgement_light', 8,
+                                       [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_light'],
+                                        TAGS['magic_lv_7']]),
+    'dark_restrict': Inventory.Item('Dark Restrict', '', 'dark_restrict', 8,
+                                     [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_dark'],
+                                      TAGS['magic_lv_7']]),
+    'forbidden_curse__fire': Inventory.Item('Forbidden Curse: Fire', '', 'forbidden_curse__fire', 8,
+                                             [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'],
+                                              TAGS['arcane_weapon'], TAGS['magic_element_fire'],
+                                               TAGS['magic_lv_forbidden_curse']]),
 
     'lights_bible': Inventory.Item('Light\'s Bible', 'Bright makes light', 'lights_bible', 7,
                                  [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'],
@@ -423,6 +533,62 @@ items_dict: dict[str, Inventory.Item] = {
     'energy_bible': Inventory.Item('Energy\'s Bible', 'Energy makes light', 'energy_bible', 7,
                                  [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'],
                                   TAGS['magic_element_energy'], TAGS['magic_lv_bible'], TAGS['workstation']]),
+
+    'primal__winds_wand': Inventory.Item('Primal: Wind\'s Wand', '', 'primal__winds_wand', 8,
+                                        [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                         TAGS['magic_lv_primal_magic']]),
+    '_circulates_domain': Inventory.Item('Circulates Domain', '', '_circulates_domain', 8,
+                                        [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                         TAGS['magic_lv_primal_magic']]),
+    '_wd_circulate_clockwise': Inventory.Item('Circulate Clockwise', '', '_wd_circulate_clockwise', 8,
+                                               [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                                TAGS['magic_lv_primal_magic']]),
+    '_wd_circulate_anticlockwise': Inventory.Item('Circulate Anticlockwise', '', '_wd_circulate_anticlockwise', 8,
+                                                  [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                                   TAGS['magic_lv_primal_magic']]),
+    '_wd_circulate_attract': Inventory.Item('Circulate Attract', '', '_wd_circulate_attract', 8,
+                                             [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                              TAGS['magic_lv_primal_magic']]),
+    '_wd_circulate_repel': Inventory.Item('Circulate Repel', '', '_wd_circulate_repel', 8,
+                                           [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                            TAGS['magic_lv_primal_magic']]),
+    '_wd_strong_wind': Inventory.Item('Strong Wind', '', '_wd_strong_wind', 8,
+                                       [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                        TAGS['magic_lv_primal_magic']]),
+    '_wd_extinct': Inventory.Item('Extinct', '', '_wd_extinct', 8,
+                                   [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_air'],
+                                    TAGS['magic_lv_primal_magic']]),
+
+    'primal__life_wand': Inventory.Item('Primal: Life\'s Wand', '', 'primal__life_wand', 8,
+                                        [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                         TAGS['magic_lv_primal_magic']]),
+    '_life_domain': Inventory.Item('Life Domain', '', '_life_domain', 8,
+                                    [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                     TAGS['magic_lv_primal_magic']]),
+    '_ld_summon_tree': Inventory.Item('Summon: Tree', '', '_ld_summon_tree', 8,
+                                      [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                       TAGS['magic_lv_primal_magic']], specify_img='_ld_summon'),
+    '_ld_summon_cactus': Inventory.Item('Summon: Cactus', '', '_ld_summon_cactus', 8,
+                                        [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                         TAGS['magic_lv_primal_magic']], specify_img='_ld_summon'),
+    '_ld_summon_coniferous_tree': Inventory.Item('Summon: Coniferous Tree', '', '_ld_summon_coniferous_tree', 8,
+                                                   [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                                    TAGS['magic_lv_primal_magic']], specify_img='_ld_summon'),
+    '_ld_summon_huge_tree': Inventory.Item('Summon: Huge Tree', '', '_ld_summon_huge_tree', 8,
+                                             [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                              TAGS['magic_lv_primal_magic']], specify_img='_ld_summon'),
+    '_ld_summon_tree_monster': Inventory.Item('Summon: Tree Monster', '', '_ld_summon_tree_monster', 8,
+                                               [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                                TAGS['magic_lv_primal_magic']], specify_img='_ld_summon'),
+    '_ld_summon_bloodflower': Inventory.Item('Summon: Bloodflower', '', '_ld_summon_bloodflower', 8,
+                                              [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                               TAGS['magic_lv_primal_magic']], specify_img='_ld_summon'),
+    '_ld_summon_soulflower': Inventory.Item('Summon: Soulflower', '', '_ld_summon_soulflower', 8,
+                                              [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                               TAGS['magic_lv_primal_magic']], specify_img='_ld_summon'),
+    '_ld_heal': Inventory.Item('Heal', '', '_ld_heal', 8,
+                               [TAGS['item'], TAGS['weapon'], TAGS['magic_weapon'], TAGS['magic_element_life'],
+                                TAGS['magic_lv_primal_magic']]),
 
     'natural_necklace': Inventory.Item('Natural Necklace', '+4/sec mana regeneration', 'natural_necklace', 1,
                                        [TAGS['item'], TAGS['accessory']]),
@@ -505,6 +671,10 @@ items_dict: dict[str, Inventory.Item] = {
                                      TAGS['major_accessory']]),
     'necklace_of_life': Inventory.Item('Necklace of Life', '+30/sec regeneration\n+60/sec mana regeneration',
                                        'necklace_of_life', 7, [TAGS['item'], TAGS['accessory']]),
+    'cloudy_glasses': Inventory.Item('Cloudy Glasses', '-20% damage\n+120% melee damage\n'
+                                                       '30% speed\n+188 defense\n+128 magic defense\nNight vision\n'
+                                                       'Y: Kill all projectiles.\n600 mana cost', 'cloudy_glasses', 7,
+                                      [TAGS['item'], TAGS['accessory'], TAGS['night_vision']]),
     'cowboy_hat': Inventory.Item('Cowboy Hat', '-20% damage\n+90% ranged damage\n+50% speed\n+10/sec '
                                                'regeneration\n+120 touching defense\n+150 magic defense\nNight '
                                                'vision\nY: +114514 defense\n+500% damage\n+300% speed\n400 mana '
@@ -602,10 +772,11 @@ class Recipe:
         return True
 
     def is_related(self, inv: Inventory):
-        t = 0
-        for it, qt in self.material.items():
-            t += inv.is_enough(ITEMS[it], qt)
-        return t >= len(self.material) // 2 and t
+        mr = max([ITEMS[it].rarity for it, _ in self.material.items()])
+        for it, _ in self.material.items():
+            if ITEMS[it].rarity == mr and inv.is_enough(ITEMS[it]):
+                return True
+        return False
 
 
 RECIPES = [
@@ -644,6 +815,7 @@ RECIPES = [
     Recipe({'platinum_ingot': 21, 'iron_ingot': 8, 'anvil': 1}, 'platinum_blade'),
     Recipe({'platinum_ingot': 20, 'anvil': 1}, 'platinum_spear'),
     Recipe({'platinum_ingot': 15, 'magic_stone': 8, 'anvil': 1}, 'platinum_wand'),
+    Recipe({'wood': 60, 'magic_stone': 15, 'leaf': 5, 'platinum': 24, 'anvil': 1}, 'life_wooden_sword'),
     Recipe({'wood': 60, 'mana_crystal': 2, 'leaf': 10, 'anvil': 1}, 'life_wooden_wand'),
     Recipe({'platinum_ingot': 20, 'anvil': 1}, 'platinum_bow'),
     Recipe({'platinum_ingot': 30, 'magic_stone': 5, 'anvil': 1}, 'submachine_gun'),
@@ -661,6 +833,7 @@ RECIPES = [
     Recipe({'platinum_ingot': 3, 'magic_arrow': 100}, 'quiver'),
     Recipe({'platinum': 9, 'mana_crystal': 3}, 'hat'),
     Recipe({'platinum_ingot': 10, 'blood_ingot': 20, 'anvil': 1}, 'bloody_sword'),
+    Recipe({'platinum_ingot': 12, 'blood_ingot': 32, 'anvil': 1}, 'blood_pike'),
     Recipe({'platinum_ingot': 6, 'blood_ingot': 24, 'anvil': 1}, 'bloody_bow'),
     Recipe({'platinum_ingot': 8, 'blood_ingot': 16, 'mana_crystal': 1, 'anvil': 1}, 'blood_wand'),
     Recipe({'blood_ingot': 5, 'platinum_ingot': 5, 'anvil': 1}, 'blood_arrow', 100),
@@ -684,6 +857,7 @@ RECIPES = [
            'nights_edge'),
     Recipe({'platinum_ingot': 32, 'blood_ingot': 20, 'firite_ingot': 20, 'mysterious_ingot': 20, 'storm_core': 1},
            'nights_pike'),
+    Recipe({'mysterious_ingot': 12, 'storm_core': 1}, 'storm_swift_sword'),
     Recipe({'platinum_wand': 1, 'burning_book': 1, 'talent_book': 1, 'blood_wand': 1, 'rock_wand': 1, 'storm_core': 1},
            'midnights_wand'),
     Recipe({'platinum_bow': 1, 'submachine_gun': 1, 'bloody_bow': 1, 'magma_assaulter': 1, 'recurve_bow': 1,
@@ -693,7 +867,7 @@ RECIPES = [
     Recipe({'storm_core': 3}, 'windstorm_warlock_mark'),
     Recipe({'storm_core': 3}, 'windstorm_assassin_mark'),
     Recipe({'storm_core': 3}, 'windstorm_swordman_mark'),
-    Recipe({'soul': 60, 'mithrill_anvil': 1}, 'spiritual_heart'),
+    Recipe({'soul': 60}, 'spiritual_heart'),
     Recipe({'soul': 30, 'firy_plant': 5}, 'butterscotch_pie', 20),
     Recipe({'soul': 10, 'magic_stone': 5}, 'seatea', 20),
     Recipe({'palladium': 4}, 'palladium_ingot'),
@@ -712,6 +886,8 @@ RECIPES = [
     Recipe({'spiritual_stabber': 1, 'evil_ingot': 20, 'soul': 120, 'mithrill_anvil': 1}, 'balanced_stabber'),
     Recipe({'spiritual_piercer': 1, 'evil_ingot': 20, 'soul': 120, 'mithrill_anvil': 1}, 'discord_storm'),
     Recipe({'spiritual_destroyer': 1, 'evil_ingot': 20, 'soul': 120, 'mithrill_anvil': 1}, 'evil_book'),
+    Recipe({'soul': 30, 'palladium_ingot': 8, 'evil_ingot': 10}, 'blood_sacrifice'),
+    Recipe({'soul': 10, 'mithrill_ingot': 15}, 'blade_wand'),
     Recipe({'soul_of_flying': 20, 'soul': 100, 'mithrill_anvil': 1}, 'wings'),
     Recipe({'palladium_ingot': 1, 'mithrill_ingot': 1, 'soul': 5, 'mithrill_anvil': 1}, 'saint_steel_ingot'),
     Recipe({'mithrill_ingot': 1, 'titanium_ingot': 1, 'soul': 5, 'mithrill_anvil': 1}, 'daedalus_ingot'),
@@ -768,7 +944,24 @@ RECIPES = [
     Recipe({'chlorophyte_ingot': 16}, 'necklace_of_life'),
     Recipe({'soul_of_growth': 32, 'chlorophyte_ingot': 1, 'butterscotch_pie': 1}, 'life_fruit'),
     Recipe({'soul_of_growth': 24, 'chlorophyte_ingot': 8}, 'life_wand'),
-    Recipe({'chlorophyte_ingot': 5, 'soul_of_justice': 32}, 'cowboy_hat'),
+    Recipe({'chlorophyte_ingot': 5, 'soul_of_justice': 32, 'soul_of_patience': 1, 'soul_of_perseverance': 1}, 'cowboy_hat'),
+    Recipe({'chlorophyte_ingot': 5, 'soul_of_perseverance': 32, 'soul_of_patience': 1, 'soul_of_justice': 1}, 'cloudy_glasses'),
+    Recipe({'chaos_ingot': 32}, 'chaos_teleporter'),
+    Recipe({'chaos_ingot': 36}, 'chaos_killer'),
+    Recipe({'chaos_ingot': 12, 'firite_ingot': 1}, 'skyfire__meteor'),
+    Recipe({'chaos_ingot': 12, 'magic_stone': 1}, 'azure_guard'),
+    Recipe({'chaos_ingot': 12, 'storm_core': 1}, 'storm'),
+    Recipe({'chaos_ingot': 12, 'iron_ingot': 1}, 'earth_wall'),
+    Recipe({'chaos_ingot': 15, 'leaf': 1}, 'lifebringer'),
+    Recipe({'chaos_ingot': 15, 'cell_organization': 1}, 'target_dummy'),
+    Recipe({'chaos_ingot': 15, 'photon': 1}, 'judgement_light'),
+    Recipe({'chaos_ingot': 1, 'photon': 1}, 'dark_restrict'),
+    Recipe({'chaos_ingot': 32, 'firite_ingot': 1}, 'forbidden_curse__fire'),
+    Recipe({'true_nights_edge': 1, 'true_excalibur': 1, 'perseverance_sword': 1,
+            'black_hole_sword': 1, 'life_devourer': 1, 'jevil_knife': 1}, 'the_blade'),
+
+    Recipe({'chaos_ingot': 128, 'storm_core': 32}, 'primal__winds_wand'),
+    Recipe({'chaos_ingot': 128, 'blood_ingot': 512, 'cell_organization': 128}, 'primal__life_wand'),
 
     Recipe({'photon': 100, 'chlorophyll': 1}, 'lights_bible'),
     Recipe({'lights_bible': 1,' photon': 1}, 'light_purify'),

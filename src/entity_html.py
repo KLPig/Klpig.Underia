@@ -25,11 +25,12 @@ img_str = ("<td><div class='item %s drop' id='%s-%s' onclick='location.href=\"./
 entity_str = "<div class='entity' id='%s'><img src='assets/graphics/entity/%s.png'/> <p class='amount'>%s</p></div>"
 
 ets = [
-    'Tree', 'TreeMonster', 'HugeTree', 'ClosedBloodflower', 'Eye', 'Bloodflower', 'RedWatcher', 'Star',
+    'Tree', 'Cactus', 'ConiferousTree', 'HugeTree', 'TreeMonster', 'ClosedBloodflower', 'Eye', 'Bloodflower', 'RedWatcher', 'Star',
     'SwordInTheStone',
-    'Cactus', 'TrueEye', 'MagmaCube', 'MagmaKing', 'RuneRock', 'SandStorm', 'AbyssEye', 'EvilMark', 'SoulFlower',
-    'MechanicEye', 'Cells', 'FaithlessEye', 'TruthlessEye', 'Destroyer', 'TheCPU', 'Greed', 'EyeOfTime', 'DevilPython',
-    'Leaf'
+    'TrueEye', 'MagmaCube', 'MagmaKing', 'RuneRock', 'SandStorm', 'AbyssEye', 'EvilMark', 'SoulFlower',
+    'MechanicEye', 'Cells', 'IceCap', 'SnowDrake', 'Leaf',
+    'FaithlessEye', 'TruthlessEye', 'Destroyer', 'TheCPU', 'Greed', 'EyeOfTime', 'DevilPython',
+    'Jevil', 'JevilKnife'
 ]
 
 # ets = dir(underia.Entities)

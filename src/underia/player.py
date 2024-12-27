@@ -66,7 +66,7 @@ class Player:
                              'hat': 2, 'firite_helmet': 28, 'firite_cloak': 14, 'firite_pluvial': 6,
                              'windstorm_swordman_mark': 32, 'windstorm_assassin_mark': 17, 'windstorm_warlock_mark': 5,
                              'paladins_mark': 85, 'daedalus_mark': 55, 'palladium_glove': 90, 'mithrill_glove': 85,
-                             'titanium_glove': 108, 'cowboy_hat': 120}
+                             'titanium_glove': 108, 'cowboy_hat': 120, 'cloudy_glasses': 188}
         defe = 0
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_DEFENSE.keys():
@@ -85,7 +85,7 @@ class Player:
         ACCESSORY_DEFENSE = {'blue_ring': 5, 'firite_helmet': 19, 'firite_cloak': 7, 'firite_pluvial': 12,
                              'windstorm_swordman_mark': 34, 'windstorm_assassin_mark': 18, 'windstorm_warlock_mark': 12,
                              'paladins_mark': 70, 'daedalus_mark': 45, 'palladium_glove': 65, 'mithrill_glove': 95,
-                             'titanium_glove': 40, 'cowboy_hat': 150}
+                             'titanium_glove': 40, 'cowboy_hat': 150, 'cloudy_glasses': 128}
         defe = 0
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_DEFENSE.keys():
@@ -122,7 +122,7 @@ class Player:
         ACCESSORY_DAMAGE = {'dangerous_necklace': 0.12, 'winds_necklace': -0.35, 'windstorm_swordman_mark': -.12,
                             'windstorm_assassin_mark': -.12, 'windstorm_warlock_mark': -.12, 'paladins_mark': -.15,
                             'daedalus_mark': -.15, 'palladium_glove': .25, 'mithrill_glove': .32,
-                            'titanium_glove': .5, 'cowboy_hat': -.2}
+                            'titanium_glove': .5, 'cowboy_hat': -.2, 'cloudy_glasses': -.2}
         dmg = 1.0 + int(self.profile.point_strength ** 1.5) / 300
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_DAMAGE.keys():
@@ -135,7 +135,7 @@ class Player:
         ACCESSORY_SPEED = {'magic_anklet': .2,
                             'orange_ring': 0.32, 'quiver': 0.15, 'firite_cloak': .45,
                            'winds_necklace': .5, 'wings': .8, 'honest_flyer': -.2, 'palladium_glove': .16,
-                           'mithrill_glove': .8, 'titanium_glove': .2, 'cowboy_hat': .5}
+                           'mithrill_glove': .8, 'titanium_glove': .2, 'cowboy_hat': .5, 'cloudy_glasses': .3}
         if self.hp_sys.hp < self.hp_sys.max_hp * 0.6:
             ACCESSORY_SPEED['terrified_necklace'] = 0.4
         spd = 1.0
@@ -146,13 +146,14 @@ class Player:
         return spd
 
     def calculate_melee_damage(self):
-        ACCESSORY_DAMAGE = {'sheath': .18, 'firite_helmet': .3, 'windstorm_swordman_mark': .45, 'paladins_mark': .66}
+        ACCESSORY_DAMAGE = {'sheath': .18, 'firite_helmet': .3, 'windstorm_swordman_mark': .45, 'paladins_mark': .66,
+                            'cloudy_glasses': 1.2}
         dmg = 1.0
         for i in range(len(self.accessories)):
             if self.accessories[i] in ACCESSORY_DAMAGE.keys():
                 dmg += ACCESSORY_DAMAGE[self.accessories[i]]
         if self.profile.point_melee <= 0:
-            dmg *= 1 + 0.1 * self.profile.point_melee
+            dmg *= 0.91 ** abs(self.profile.point_melee)
         else:
             dmg *= 1 + self.profile.point_melee ** 1.5 * 2 / 100
         return dmg
@@ -165,7 +166,7 @@ class Player:
             if self.accessories[i] in ACCESSORY_DAMAGE.keys():
                 dmg += ACCESSORY_DAMAGE[self.accessories[i]]
         if self.profile.point_ranged <= 0:
-            dmg *= 1 + 0.1 * self.profile.point_ranged
+            dmg *= 0.91 ** abs(self.profile.point_ranged)
         else:
             dmg *= 1 + self.profile.point_ranged ** 1.5 * 2 / 100
         return dmg
@@ -177,7 +178,7 @@ class Player:
             if self.accessories[i] in ACCESSORY_DAMAGE.keys():
                 dmg += ACCESSORY_DAMAGE[self.accessories[i]]
         if self.profile.point_magic <= 0:
-            dmg *= 1 + 0.1 * self.profile.point_magic
+            dmg *= 0.91 ** abs(self.profile.point_magic)
         else:
             dmg *= 1 + self.profile.point_magic ** 1.5 * 2 / 100
         return dmg
@@ -244,6 +245,13 @@ class Player:
             self.attack *= 0.5
         self.obj.SPEED = self.calculate_speed() * 20
         self.obj.FRICTION = 1 - 0.2 * self.calculate_air_resistance()
+        for w in weapons.WEAPONS.values():
+            try:
+                if w.domain_open:
+                    self.ntcs.append(f'{w.name} is open.')
+                    self.obj.FRICTION = 0
+            except AttributeError:
+                pass
         self.REGENERATION = 0.015 + self.calculate_regeneration()
         self.MAGIC_REGEN = self.calculate_magic_regeneration()
         self.hp_sys.defenses[damages.DamageTypes.TOUCHING] = self.calculate_touching_defense()
@@ -288,7 +296,7 @@ class Player:
         sf = self.profile.get_surface(*self.profile.get_color())
         sz = int(40 / self.get_screen_scale())
         sf = pg.transform.scale(sf, (sz, sz))
-        displayer.canvas.blit(sf, (pos[0] - 20, pos[1] - 20))
+        displayer.canvas.blit(sf, (pos[0] - sz // 2, pos[1] - sz // 2))
         self.hp_sys.update()
         w = self.weapons[self.sel_weapon]
         if pg.K_EQUALS in game.get_game().get_pressed_keys():
@@ -362,6 +370,12 @@ class Player:
                                 e.hp_sys.damage(w.damages[damages.DamageTypes.PHYSICAL] * 10,
                                                 damages.DamageTypes.PHYSICAL)
                                 e.obj.velocity.add(vector.Vector(vector.coordinate_rotation(ax, ay), 15))
+                elif 'cloudy_glasses' in self.accessories:
+                    if self.mana >= 600:
+                        self.mana -= 600
+                        for e in game.get_game().entities:
+                            if not e.obj.IS_OBJECT:
+                                e.hp_sys.hp = 0
         if self.hp_sys.hp <= 1:
             self.hp_sys.hp = self.hp_sys.max_hp
             self.hp_sys.effects = []
@@ -382,10 +396,12 @@ class Player:
         hp_p = self.hp_sys.hp / self.hp_sys.max_hp
         mp_p = self.mana / self.max_mana
         tp_p = self.talent / self.max_talent if self.max_talent else 0
+        sd_p = min(1, sum([v for n, v in game.get_game().player.hp_sys.shields]) / game.get_game().player.hp_sys.max_hp)
         pg.draw.rect(displayer.canvas, (80, 0, 0), (10, 10, hp_l, 25))
         pg.draw.rect(displayer.canvas, (0, 0, 80), (10 + hp_l, 10, mp_l, 25))
         pg.draw.rect(displayer.canvas, (0, 80, 0), (10 + hp_l + mp_l, 10, tp_l, 25))
         pg.draw.rect(displayer.canvas, (255, 0, 0), (10, 10, hp_l * hp_p, 25))
+        pg.draw.rect(displayer.canvas, (255, 255, 0), (10, 10, hp_l * sd_p, 25))
         pg.draw.rect(displayer.canvas, (0, 0, 255), (10 + hp_l + mp_l - mp_l * mp_p, 10, mp_l * mp_p, 25))
         pg.draw.rect(displayer.canvas, (0, 255, 0), (10 + hp_l + mp_l, 10, tp_l * tp_p, 25))
         pg.draw.rect(displayer.canvas, (255, 255, 255), (10, 10, hp_l + mp_l + tp_l, 25), width=2)
@@ -416,7 +432,8 @@ class Player:
         if pg.Rect(10, 10, 200 + self.max_mana, 25).collidepoint(
                 game.get_game().displayer.reflect(*pg.mouse.get_pos())):
             f = displayer.font.render(
-                f"HP: {int(self.hp_sys.hp)}/{self.hp_sys.max_hp} MP: {int(self.mana)}/{self.max_mana}({self.obj.pos[0]:.1f}, {self.obj.pos[1]:.1f})",
+                f"HP: {int(self.hp_sys.hp) + int(sum([v for n, v in game.get_game().player.hp_sys.shields]))}/{self.hp_sys.max_hp} MP: {int(self.mana)}/{self.max_mana}"
+                f" TP: {int(self.talent)}/{int(self.max_talent)}",
                 True, (255, 255, 255))
             displayer.canvas.blit(f, game.get_game().displayer.reflect(*pg.mouse.get_pos()))
         if time.time_interval(game.get_game().clock.time, 0.1, 0.01):
@@ -540,6 +557,53 @@ class Player:
                                 entity.entity_spawn(entity.Entities.DevilPython, 2000, 2000, 0, 1145, 100000)
                             elif item.id == 'joker':
                                 entity.entity_spawn(entity.Entities.Jevil, 2000, 2000, 0, 1145, 100000)
+
+                            elif item.id == 'recipe_book':
+                                rep = [r for r in inventory.RECIPES if r.is_related(self.inventory)]
+                                window_opened = bool(len(rep))
+                                sel = 0
+                                window = pg.display.get_surface()
+                                wx = window.get_width() // 2
+                                wy = window.get_height() // 2
+                                if not self.inventory.is_enough(inventory.ITEMS['tip0']):
+                                    self.inventory.add_item(inventory.ITEMS['tip0'])
+                                if not self.inventory.is_enough(inventory.ITEMS['tip1']):
+                                    self.inventory.add_item(inventory.ITEMS['tip1'])
+                                while window_opened:
+                                    for event in pg.event.get():
+                                        if event.type == pg.QUIT:
+                                            window_opened = False
+                                        if event.type == pg.KEYDOWN:
+                                            if event.key == pg.K_ESCAPE:
+                                                window_opened = False
+                                            if event.key == pg.K_UP:
+                                                sel = (sel - 1 + len(rep)) % len(rep)
+                                            if event.key == pg.K_DOWN:
+                                                sel = (sel + 1) % len(rep)
+                                    pg.draw.rect(window, (255, 220, 200), (wx - 1200, wy - 800, 2400, 1600))
+                                    pg.draw.rect(window, (255, 255, 255), (wx - 1200, wy - 800, 2400, 1600), 5)
+                                    f = game.get_game().displayer.font.render(f"{sel + 1}/{len(rep)}", True, (0, 0, 0))
+                                    fr = f.get_rect(center=(wx, wy + 750))
+                                    window.blit(f, fr)
+                                    cr = rep[sel]
+                                    styles.item_display(wx - 1120, wy - 660, cr.result, '',
+                                                        str(cr.crafted_amount), 4, _window=window)
+                                    j = 0
+                                    for it, qt in cr.material.items():
+                                        styles.item_display(wx - 1120 + 160 * j, wy - 340, it, '', str(qt),
+                                                            2, _window=window)
+                                        j += 1
+                                    styles.item_mouse(wx - 1120, wy - 660, cr.result, str(sel + 1),
+                                                      str(cr.crafted_amount), 4, _window=window,
+                                                      mp=pg.mouse.get_pos())
+                                    j = 0
+                                    for it, qt in cr.material.items():
+                                        styles.item_mouse(wx - 1120 + 160 * j, wy - 340, it, str(j + 1), str(qt),
+                                                          2, _window=window, mp=pg.mouse.get_pos())
+                                        j += 1
+                                    pg.display.update((wx - 1200, wy - 800, 2400, 1600))
+                                game.get_game().pressed_keys = []
+                                game.get_game().pressed_mouse = []
                             self.in_ui = True
             for i in range(len(self.accessories)):
                 styles.item_mouse(10 + i * 90, game.get_game().displayer.SCREEN_HEIGHT - 90,
@@ -574,7 +638,6 @@ class Player:
                     self.recipes = [r for r in inventory.RECIPES if r.is_valid(self.inventory)]
                     res = [i for i, r in enumerate(self.recipes) if r is rc]
                     self.sel_recipe = res[0] if res else 0
-                i = 0
                 for i in range(-10, 10):
                     s = (self.sel_recipe + i + len(self.recipes)) % len(self.recipes)
                     cur_recipe = self.recipes[s]
@@ -610,6 +673,9 @@ class Player:
                 styles.item_mouse(10, 170, ammo, '', str(amount), 2)
         else:
             t = (game.get_game().day_time % 1 * 24 * 60)
+            for e in game.get_game().world_events:
+                self.ntcs.append(f"Event: {e}")
+            self.ntcs.append(f"{self.obj.pos[0] / 1000:.1f}, {self.obj.pos[1] / 1000:.1f}")
             self.ntcs.append(f"{int(t // 60)}:{'0' if int(t % 60) < 10 else ''}{int(t % 60)}")
             for i in range(len(self.ntcs)):
                 t = game.get_game().displayer.font.render(self.ntcs[-i - 1], True, (255, 255, 255), (0, 0, 0))
@@ -633,6 +699,7 @@ class Player:
                         self.inventory.remove_item(p)
                         self.hp_sys.heal({'weak_healing_potion': 50, 'crabapple': 120, 'butterscotch_pie': 240}[p.id])
                         self.hp_sys.effect(effects.PotionSickness(60, 1))
+                        game.get_game().play_sound('heal')
                         break
         if pg.K_m in game.get_game().get_keys():
             potions = [inventory.ITEMS['seatea'], inventory.ITEMS['weak_magic_potion']]
@@ -642,6 +709,7 @@ class Player:
                         self.inventory.remove_item(p)
                         self.mana = min(self.mana + {'weak_magic_potion': 80, 'seatea': 150}[p.id], self.max_mana)
                         self.hp_sys.effect(effects.ManaSickness(3, 1))
+                        game.get_game().play_sound('mana')
                         break
         if self.touched_item != '':
             styles.item_display(displayer.SCREEN_WIDTH - 330, 10, self.touched_item, '', '', 4)
